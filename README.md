@@ -12,7 +12,7 @@
 
 ## RFM analysis of bank clients <a name="introduction"></a>
 
-![распределение](images/распределение RFM.png)
+![распределение](images/rfm_analysis.png)
 
 ## Background and Overview  <a name="paragraph1"></a>
 - This project focuses on conducting an RFM (Recency, Frequency, Monetary) analysis of bank clients to segment customers based on their transaction behavior. The goal is to identify high-value clients, detect at-risk customers, and tailor marketing strategies to improve engagement and retention.
