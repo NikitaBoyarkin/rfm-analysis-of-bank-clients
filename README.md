@@ -1,91 +1,104 @@
-# Table of contents
-- [Table of contents](#table-of-contents)
-  - [RFM analysis of bank clients ](#rfm-analysis-of-bank-clients-)
-  - [Background and Overview  ](#background-and-overview--)
-  - [Executive Summary ](#executive-summary-)
-  - [Insights deep-dive ](#insights-deep-dive-)
-    - [Key Segments and Trends ](#key-segments-and-trends-)
-  - [Recommendations ](#recommendations-)
-  - [Clarifying  questions, caveats and assumptions  ](#clarifying--questions-caveats-and-assumptions--)
-    - [questions for stakeholders prior to projects advancement ](#questions-for-stakeholders-prior-to-projects-advancement-)
-    - [caveats and assumptions  ](#caveats-and-assumptions--)
+# RFM analysis of bank clients
 
-## RFM analysis of bank clients <a name="introduction"></a>
+Segment bank clients by transaction behavior using **Recency, Frequency, Monetary** scoring, then map quartile combos to named segments and export CSV + Excel + charts.
 
-![распределение](images/rfm_analysis.png)
+## Background
 
-## Background and Overview  <a name="paragraph1"></a>
-- This project focuses on conducting an RFM (Recency, Frequency, Monetary) analysis of bank clients to segment customers based on their transaction behavior. The goal is to identify high-value clients, detect at-risk customers, and tailor marketing strategies to improve engagement and retention.
+Synthetic transaction log for 2,000 clients of a retail bank. The goal is to identify high-value clients, flag at-risk ones, and give marketing a targetable segment per customer.
 
-- Time Period: [Specify the time period analyzed, e.g., "January 2023 - December 2023"]
+- **Time period:** 2023-01-01 → 2024-04-01 (synthetic, reproducible via `generate_data.py`, seed 42)
+- **Volume:** 10,000 transactions, ~1,981 unique active clients after anomaly drop
+- **Schema:** `customer_id, transaction_date, amount, product_category, payment_method, is_anomaly`
 
-## Executive Summary <a name="paragraph2"></a>
-The RFM analysis revealed distinct customer segments with varying levels of engagement and value to the bank. Key findings include:
+## Quick start
 
-- Identification of top-tier clients who contribute significantly to revenue.
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt      # or: uv sync
 
-- Detection of dormant clients who may require re-engagement strategies.
+python generate_data.py     # builds data/bank_rfm_dataset_10k_fixed.csv
+python rfm_analysis.py      # writes data/rfm_output.csv, data/rfm_output_report.xlsx, images/*.png
+python hypotheses.py        # runs the testable hypotheses over the RFM output
+```
 
-- Opportunities to optimize marketing efforts by targeting specific segments.
+## Method
 
-## Insights deep-dive <a name="paragraph2"></a>
+1. **Load & clean** — parse dates, drop rows flagged `is_anomaly == 1`.
+2. **RFM table** — per `customer_id`: `recency` (days since last txn vs snapshot +1d), `frequency` (txn count), `monetary_value` (sum).
+3. **Score quartiles 1..4** (higher = better):
+   - `R_Quartile`: 4 = most recent, 1 = longest ago
+   - `F_Quartile`: 4 = most frequent, 1 = rarest
+   - `M_Quartile`: 4 = highest spend, 1 = lowest
+   - `RFMClass`: 3-digit string (`444` = best, `111` = worst); `RFMScore` = sum (3..12)
+4. **Segment** — combo-based (not sum-based), so `444` and `233` no longer share a bucket:
 
-### Key Segments and Trends <a name="subparagraph1"></a>
-- High-Value Clients (Champions):
+| Condition | Segment |
+|---|---|
+| R≥4 & F≥4 & M≥4 | Champions |
+| R≥3 & F≥3 & M≥3 | Loyal |
+| R≥3 & M≥3 | Potential Loyalists |
+| R≤2 & F≥3 | At Risk |
+| R≤2 & F≤2 | Hibernating |
+| else | Need Attention |
 
-  - Insight: These clients have made recent, frequent, and high-value transactions.
+5. **Export** — CSV (`data/rfm_output.csv`), formatted Excel (`data/rfm_output_report.xlsx`), charts (`images/`).
 
-  - Goal: Retain and reward them to foster loyalty.
+## Results
 
-  - Visualization: Include a monochrome bar chart showing their contribution to revenue.
+| Segment | Customers | Avg recency | Avg frequency | Avg monetary | Avg RFM |
+|---|---:|---:|---:|---:|---:|
+| Champions | 83 | 11.2 | 8.4 | 74,641 | 12.00 |
+| Loyal | 311 | 29.1 | 7.1 | 40,997 | 10.41 |
+| Potential Loyalists | 208 | 29.8 | 4.3 | 49,030 | 8.85 |
+| At Risk | 232 | 115.9 | 7.0 | 40,172 | 8.43 |
+| Need Attention | 395 | 29.1 | 4.3 | 9,816 | 7.01 |
+| Hibernating | 752 | 171.5 | 3.2 | 17,459 | 4.81 |
 
-- At-Risk Clients:
+![Segment distribution](images/segment_distribution.png)
+![Monetary by segment](images/monetary_by_segment.png)
+![Recency vs Frequency](images/rfm_scatter.png)
 
-  - Insight: Clients with declining activity or infrequent transactions.
+## Hypotheses
 
-  - Goal: Implement targeted re-engagement campaigns.
+Five hypotheses were declared; two are testable on this schema, three require data not present here.
 
-- Potential Loyalists:
+| # | Hypothesis | Test | Result |
+|---|---|---|---|
+| H1 | Higher Monetary ↔ more distinct products | Spearman ρ | **ρ=0.498, p<0.001 — supported** |
+| H5 | Mobile-bank users (Apple/Google Pay) have higher Monetary | Mann-Whitney U (one-sided) | **median 16,262 vs 10,053, p<0.001 — supported** |
+| H2 | Low Recency → higher retention | — | untestable: no cohort panel / retention label |
+| H3 | Hibernating clients reactivate via email | — | untestable: no campaign exposure data |
+| H4 | High Frequency → higher NPS | — | untestable: no NPS / satisfaction field |
 
-  - Insight: Clients with high frequency but moderate monetary value.
+Run `python hypotheses.py` to reproduce.
 
-  - Goal: Upsell premium products or services to increase their value.
-  
-## Recommendations <a name="introduction"></a>
+## Recommendations
 
-Based on the insights, the following actions are recommended:
+- **Champions (83):** retention rewards + referral asks; they drive the bulk of monetary value.
+- **At Risk (232):** recent drop-off but historically frequent + high spend — re-engagement campaign before they slide into Hibernating.
+- **Hibernating (752, 38%):** the largest pool; cheap win-back emails, but don't over-invest — avg monetary is low.
+- **Need Attention (395):** recent but low frequency/spend — upsell to lift M, or they churn quietly.
+- **Potential Loyalists (208):** high spend, moderate frequency — upsell premium products to grow F.
 
-- Enhance Customer Engagement:
+## Caveats
 
-  - Launch personalized offers for high-value clients to strengthen loyalty.
+- Data is **synthetic** (see `generate_data.py`); segment sizes and correlations reflect the generator, not a real bank.
+- Quartile thresholds define "high/low" mechanically; validate against business expectations before acting.
+- `recency` is computed against a snapshot date (max txn + 1 day), not today.
 
-  - Develop re-engagement campaigns for at-risk clients, such as exclusive discounts or reminders.
+## Project layout
 
-- Optimize Marketing Strategies:
+```
+rfm_analysis.py       canonical pipeline (load -> score -> segment -> export)
+generate_data.py      synthetic dataset generator
+hypotheses.py         testable hypothesis checks
+utils/                Excel report generation
+data/                 dataset + outputs (gitignored where regenerable)
+images/               charts
+notebooks/            exploratory notebooks
+```
 
-  - Tailor communication based on RFM segments (e.g., frequency of emails, type of offers).
+## License
 
-  - Focus on converting potential loyalists into high-value clients through targeted upselling.
-
-- Improve Data Quality:
-
-  - Address inconsistencies in client categorization to refine segmentation accuracy.
-
-- Monitor and Iterate:
-
-  - Regularly update the RFM analysis to track changes in client behavior and adjust strategies accordingly.
-
-
-## Clarifying  questions, caveats and assumptions  <a name="introduction"></a>
-
-### questions for stakeholders prior to projects advancement <a name="subparagraph1"></a>
-- Data Completeness: Are there any gaps in client transaction data that could affect the analysis?
-
-- Business Goals: How should the segments align with the bank's current priorities (e.g., retention vs. acquisition)?
-
-### caveats and assumptions  <a name="subparagraph1"></a>
-- Data Context: 
-  - Insights are based on synthetic data and may not account for all real-world variables, such as customer demographics or broader market factors.
-  - The analysis is based on historical transaction data and may not account for external factors like economic shifts.
-- Segment Boundaries: 
-  - RFM thresholds (e.g., what defines "high-value") are assumptions and may require validation with stakeholders.
+MIT — see [LICENSE](LICENSE).

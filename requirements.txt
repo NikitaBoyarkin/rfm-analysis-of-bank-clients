@@ -1,0 +1,12 @@
+# RFM pipeline runtime dependencies (kept for pip/venv users).
+# Prefer: uv sync
+pandas>=2.2,<3.0
+numpy>=1.26,<3.0
+matplotlib>=3.8,<4.0
+seaborn>=0.13,<1.0
+openpyxl>=3.1,<4.0
+scipy>=1.12,<2.0
+
+# Optional: notebook exploration
+# jupyter>=1.0,<2.0
+# ipykernel>=6.0

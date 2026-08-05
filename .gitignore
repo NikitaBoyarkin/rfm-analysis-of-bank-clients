@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+
+# OS
+.DS_Store
+
+# Outputs (regenerable)
+data/rfm_output.csv
+data/rfm_output_report.xlsx
+data/sample_report.xlsx
