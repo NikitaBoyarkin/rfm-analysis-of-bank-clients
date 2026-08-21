@@ -1,6 +1,6 @@
 # RFM analysis of bank clients
 
-Segment bank clients by transaction behavior using **Recency, Frequency, Monetary** scoring, then map quartile combos to named segments and export CSV + Excel + charts.
+Segment bank clients by transaction behavior using **Recency, Frequency, Monetary** scoring, then map quartile combos to named segments and export CSV + Excel + charts + an interactive dashboard.
 
 ## Background
 
@@ -13,13 +13,13 @@ Synthetic transaction log for 2,000 clients of a retail bank. The goal is to ide
 ## Quick start
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt      # or: uv sync
+uv sync --all-extras          # or: python -m venv .venv && pip install -r requirements.txt
 
-python generate_data.py     # builds data/bank_rfm_dataset_10k_fixed.csv
-python rfm_analysis.py      # writes data/rfm_output.csv, data/rfm_output_report.xlsx, images/*.png
-python hypotheses.py        # runs the testable hypotheses over the RFM output
+python generate_data.py       # builds data/bank_rfm_dataset_10k_fixed.csv
+python rfm_analysis.py        # writes data/rfm_output.csv, data/rfm_output_report.xlsx, images/*.png
+python hypotheses.py          # runs the testable hypotheses over the RFM output
+pytest                        # 18 unit tests on the pure pipeline functions
+streamlit run dashboard/app.py   # interactive dashboard (5 tabs)
 ```
 
 ## Method
@@ -42,7 +42,8 @@ python hypotheses.py        # runs the testable hypotheses over the RFM output
 | R≤2 & F≤2 | Hibernating |
 | else | Need Attention |
 
-5. **Export** — CSV (`data/rfm_output.csv`), formatted Excel (`data/rfm_output_report.xlsx`), charts (`images/`).
+5. **Concentration** — Lorenz curve + Gini coefficient verify segmentation has business sense; per-segment `concentration_ratio = revenue_share / customer_share` flags over/under-indexing.
+6. **Export** — CSV (`data/rfm_output.csv`), formatted Excel (`data/rfm_output_report.xlsx`), charts (`images/`), interactive dashboard (`dashboard/`).
 
 ## Results
 
@@ -55,18 +56,24 @@ python hypotheses.py        # runs the testable hypotheses over the RFM output
 | Need Attention | 395 | 29.1 | 4.3 | 9,816 | 7.01 |
 | Hibernating | 752 | 171.5 | 3.2 | 17,459 | 4.81 |
 
+**Monetary concentration:** Gini = 0.533 — Champions over-index on revenue (ratio 2.66), Hibernating under-indexes (ratio 0.62).
+
 ![Segment distribution](images/segment_distribution.png)
 ![Monetary by segment](images/monetary_by_segment.png)
 ![Recency vs Frequency](images/rfm_scatter.png)
+![Lorenz curve](images/lorenz_curve.png)
 
 ## Hypotheses
 
-Five hypotheses were declared; two are testable on this schema, three require data not present here.
+Five original + three added hypotheses; seven testable on this schema.
 
 | # | Hypothesis | Test | Result |
 |---|---|---|---|
 | H1 | Higher Monetary ↔ more distinct products | Spearman ρ | **ρ=0.498, p<0.001 — supported** |
 | H5 | Mobile-bank users (Apple/Google Pay) have higher Monetary | Mann-Whitney U (one-sided) | **median 16,262 vs 10,053, p<0.001 — supported** |
+| H6 | Segment × product-category associated | χ² independence | χ²=14.1, p=0.96 — **not supported (independent)** |
+| H7 | Mobile users have lower Recency (more recent) | Mann-Whitney U (one-sided) | **median 59 vs 100, p<0.001 — supported** |
+| H8 | Anomaly rate differs by segment | χ² independence | **χ²=68.8, p<0.001 — supported** (Hibernating 7.4%) |
 | H2 | Low Recency → higher retention | — | untestable: no cohort panel / retention label |
 | H3 | Hibernating clients reactivate via email | — | untestable: no campaign exposure data |
 | H4 | High Frequency → higher NPS | — | untestable: no NPS / satisfaction field |
@@ -76,10 +83,22 @@ Run `python hypotheses.py` to reproduce.
 ## Recommendations
 
 - **Champions (83):** retention rewards + referral asks; they drive the bulk of monetary value.
-- **At Risk (232):** recent drop-off but historically frequent + high spend — re-engagement campaign before they slide into Hibernating.
+- **At Risk (232):** recent drop-off but historically frequent + high spend — re-engagement campaign before they slide into Hibernating (see `docs/experiment_winback.md`).
 - **Hibernating (752, 38%):** the largest pool; cheap win-back emails, but don't over-invest — avg monetary is low.
 - **Need Attention (395):** recent but low frequency/spend — upsell to lift M, or they churn quietly.
 - **Potential Loyalists (208):** high spend, moderate frequency — upsell premium products to grow F.
+
+## Docs & artifacts
+
+| File | What |
+|---|---|
+| `docs/data_dictionary.md` | Field catalog for source + RFM tables |
+| `docs/sql_templates.md` | SQL equivalents of the pipeline (PostgreSQL/ClickHouse) |
+| `docs/metrics_framework.md` | Input→Output→Outcome, leading/lagging per segment |
+| `docs/experiment_winback.md` | A/B design for a win-back campaign (FINER, sample size) |
+| `docs/prd_segment_targeting.md` | PRD — expose `rfm_segment` to marketing |
+| `dashboard/app.py` | Streamlit dashboard (Overview / Segments / RFM map / Concentration / Raw) |
+| `presentation/slides.md` | Marp deck summarizing the project |
 
 ## Caveats
 
@@ -92,8 +111,12 @@ Run `python hypotheses.py` to reproduce.
 ```
 rfm_analysis.py       canonical pipeline (load -> score -> segment -> export)
 generate_data.py      synthetic dataset generator
-hypotheses.py         testable hypothesis checks
+hypotheses.py         testable + untestable hypothesis checks
 utils/                Excel report generation
+dashboard/            Streamlit interactive dashboard
+presentation/         Marp slide deck
+docs/                 data dictionary, SQL templates, A/B design, PRD, metrics
+tests/                pytest unit tests (18)
 data/                 dataset + outputs (gitignored where regenerable)
 images/               charts
 notebooks/            exploratory notebooks

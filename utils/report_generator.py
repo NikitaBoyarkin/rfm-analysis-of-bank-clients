@@ -3,6 +3,7 @@
 Single responsibility: turn a scored RFM DataFrame + per-segment summary
 into a formatted multi-sheet .xlsx with a Summary sheet.
 """
+
 from __future__ import annotations
 
 import os
@@ -13,9 +14,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils.dataframe import dataframe_to_rows
 
-COLOR_BLUE = "0000FF"     # headers
+COLOR_BLUE = "0000FF"  # headers
 COLOR_YELLOW = "FFFF00"  # header fill
-COLOR_GRAY = "F0F0F0"     # alternating rows
+COLOR_GRAY = "F0F0F0"  # alternating rows
 
 
 def _create_summary_sheet(data_dict: dict, title: str, author: str) -> pd.DataFrame:
@@ -48,7 +49,7 @@ def _add_sheet(wb: Workbook, df: pd.DataFrame, sheet_name: str, is_summary: bool
                 cell.fill = PatternFill(start_color=COLOR_GRAY, fill_type="solid")
             if isinstance(value, (int, float)) and r_idx > 1:
                 if abs(value) >= 1000000:
-                    cell.number_format = "#,##0,,\"M\""
+                    cell.number_format = '#,##0,,"M"'
                 elif abs(value) >= 1000:
                     cell.number_format = "#,##0"
                 elif 0 < abs(value) < 1:
@@ -85,23 +86,34 @@ def generate_rfm_excel(
     output_path: str = "output/rfm_analysis.xlsx",
 ) -> str:
     """Generate the RFM segmentation Excel report (Summary + Segments + Customer_RFM)."""
-    summary_df = pd.DataFrame({
-        "Metric": ["Total Customers", "Segments", "Avg RFM Score"],
-        "Value": [
-            len(rfm_data),
-            rfm_data["Segment"].nunique(),
-            round(rfm_data["RFMScore"].mean(), 2),
-        ],
-    })
+    summary_df = pd.DataFrame(
+        {
+            "Metric": ["Total Customers", "Segments", "Avg RFM Score"],
+            "Value": [
+                len(rfm_data),
+                rfm_data["Segment"].nunique(),
+                round(rfm_data["RFMScore"].mean(), 2),
+            ],
+        }
+    )
     data_dict = {
         "Summary": summary_df,
         "Segments": segment_summary,
         "Customer_RFM": rfm_data[
-            ["customer_id", "R_Quartile", "F_Quartile", "M_Quartile", "RFMClass", "RFMScore", "Segment"]
+            [
+                "customer_id",
+                "R_Quartile",
+                "F_Quartile",
+                "M_Quartile",
+                "RFMClass",
+                "RFMScore",
+                "Segment",
+            ]
         ],
     }
     return generate_excel_report(
-        data_dict, output_path,
+        data_dict,
+        output_path,
         title="RFM Segmentation Analysis",
         author="Customer Analytics Team",
     )

@@ -9,11 +9,13 @@ Scoring convention (industry standard, higher = better):
     RFMClass: 3-digit string, "444" = Champion, "111" = Lost
     RFMScore:  sum 3..12, higher = better
 """
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 
@@ -119,6 +121,70 @@ def segment_summary(scored: pd.DataFrame) -> pd.DataFrame:
     return summary
 
 
+def lorenz_gini(rfm: pd.DataFrame) -> tuple[float, np.ndarray, np.ndarray]:
+    """Lorenz curve and Gini coefficient of monetary concentration.
+
+    Top-X% of customers generating Y% of revenue verifies that segmentation
+    has business sense (vs. uniform revenue). Pattern from olist reference.
+    Returns (gini, cumulative_customers_share, cumulative_revenue_share).
+    """
+    m = rfm["monetary_value"].sort_values().values
+    n = m.size
+    cum_customers = np.arange(1, n + 1) / n
+    cum_revenue = np.cumsum(m) / m.sum()
+    # Version-agnostic trapezoidal integral (np.trapz was removed in numpy 2.0).
+    area = float(np.sum(np.diff(cum_customers) * (cum_revenue[:-1] + cum_revenue[1:]) / 2))
+    gini = 1 - 2 * area
+    return gini, cum_customers, cum_revenue
+
+
+def plot_lorenz_curve(rfm: pd.DataFrame, out_path: Path) -> float:
+    """Plot Lorenz curve + Gini coefficient of monetary value concentration.
+
+    Annotates the top-20% customers' share of revenue. Returns the Gini.
+    """
+    gini, cum_c, cum_r = lorenz_gini(rfm)
+    fig, ax = plt.subplots()
+    ax.plot(cum_c, cum_r, color="#3a6ea5", label="Lorenz curve")
+    ax.plot([0, 1], [0, 1], "--", color="grey", label="Equality line")
+    idx20 = max(int(np.ceil(0.2 * len(cum_c))) - 1, 0)
+    ax.axvline(0.2, color="#d33", linestyle=":", alpha=0.6)
+    ax.scatter([0.2], [cum_r[idx20]], color="#d33", zorder=5)
+    ax.annotate(
+        f"Top-20% → {cum_r[idx20]:.0%} of revenue",
+        xy=(0.2, cum_r[idx20]),
+        xytext=(0.35, 0.4),
+        fontsize=9,
+    )
+    ax.set_title(f"Lorenz curve — monetary concentration (Gini = {gini:.3f})")
+    ax.set_xlabel("Cumulative customers (poorest → richest)")
+    ax.set_ylabel("Cumulative revenue")
+    ax.legend(loc="upper left")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+    return gini
+
+
+def segment_revenue_concentration(scored: pd.DataFrame) -> pd.DataFrame:
+    """Per-segment share of customers vs share of revenue (olist pattern).
+
+    concentration_ratio = revenue_share / customer_share. > 1 means the segment
+    over-indexes on revenue; < 1 means it under-indexes. A segment with a high
+    customer share but low revenue share is a candidate for cost cutting, not
+    investment.
+    """
+    seg = (
+        scored.groupby("Segment")
+        .agg(customers=("customer_id", "count"), revenue=("monetary_value", "sum"))
+        .reset_index()
+    )
+    seg["share_customers_%"] = (seg["customers"] / seg["customers"].sum() * 100).round(2)
+    seg["share_revenue_%"] = (seg["revenue"] / seg["revenue"].sum() * 100).round(2)
+    seg["concentration_ratio"] = (seg["share_revenue_%"] / seg["share_customers_%"]).round(2)
+    return seg.sort_values("share_revenue_%", ascending=False)
+
+
 def plot_segment_distribution(scored: pd.DataFrame, out_path: Path) -> None:
     """Bar chart: customer count per segment."""
     order = scored["Segment"].value_counts().index
@@ -127,8 +193,14 @@ def plot_segment_distribution(scored: pd.DataFrame, out_path: Path) -> None:
     ax.set_title("RFM segment distribution")
     ax.set_xlabel("Customers")
     for p in ax.patches:
-        ax.annotate(int(p.get_width()), (p.get_width(), p.get_y() + p.get_height() / 2),
-                    ha="left", va="center", xytext=(4, 0), textcoords="offset points")
+        ax.annotate(
+            int(p.get_width()),
+            (p.get_width(), p.get_y() + p.get_height() / 2),
+            ha="left",
+            va="center",
+            xytext=(4, 0),
+            textcoords="offset points",
+        )
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
@@ -137,8 +209,16 @@ def plot_segment_distribution(scored: pd.DataFrame, out_path: Path) -> None:
 def plot_monetary_by_segment(scored: pd.DataFrame, out_path: Path) -> None:
     """Boxplot: monetary value per segment (log scale)."""
     fig, ax = plt.subplots()
-    sns.boxplot(data=scored, x="avg_monetary" if False else "monetary_value", y="Segment", ax=ax,
-                order=scored.groupby("Segment")["monetary_value"].median().sort_values(ascending=False).index)
+    sns.boxplot(
+        data=scored,
+        x="monetary_value",
+        y="Segment",
+        ax=ax,
+        order=scored.groupby("Segment")["monetary_value"]
+        .median()
+        .sort_values(ascending=False)
+        .index,
+    )
     ax.set_xscale("log")
     ax.set_title("Monetary value by segment (log scale)")
     ax.set_xlabel("Monetary value")
@@ -151,8 +231,14 @@ def plot_rfm_scatter(scored: pd.DataFrame, out_path: Path) -> None:
     """Scatter: recency vs frequency, coloured by monetary."""
     fig, ax = plt.subplots()
     sns.scatterplot(
-        data=scored, x="recency", y="frequency", hue="Segment",
-        size="monetary_value", sizes=(15, 120), alpha=0.7, ax=ax,
+        data=scored,
+        x="recency",
+        y="frequency",
+        hue="Segment",
+        size="monetary_value",
+        sizes=(15, 120),
+        alpha=0.7,
+        ax=ax,
     )
     ax.set_title("Recency vs Frequency (size = Monetary)")
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
@@ -180,11 +266,17 @@ def build_rfm(
     summary = segment_summary(scored)
     generate_rfm_excel(scored, summary, str(output_xlsx))
 
+    concentration = segment_revenue_concentration(scored)
+    print("\nSegment revenue concentration (customers vs revenue):")
+    print(concentration.to_string(index=False))
+
     if make_charts:
         CHARTS_DIR.mkdir(parents=True, exist_ok=True)
         plot_segment_distribution(scored, CHARTS_DIR / "segment_distribution.png")
         plot_monetary_by_segment(scored, CHARTS_DIR / "monetary_by_segment.png")
         plot_rfm_scatter(scored, CHARTS_DIR / "rfm_scatter.png")
+        gini = plot_lorenz_curve(scored, CHARTS_DIR / "lorenz_curve.png")
+        print(f"\nGini coefficient (monetary concentration): {gini:.3f}")
 
     print(f"Rows: {len(scored)} customers across {scored['Segment'].nunique()} segments")
     print(summary.to_string(index=False))
@@ -198,7 +290,6 @@ def build_rfm(
 if __name__ == "__main__":
     if not DEFAULT_INPUT.exists():
         raise SystemExit(
-            f"Dataset not found: {DEFAULT_INPUT}\n"
-            "Generate it first:  python generate_data.py"
+            f"Dataset not found: {DEFAULT_INPUT}\nGenerate it first:  python generate_data.py"
         )
     build_rfm()

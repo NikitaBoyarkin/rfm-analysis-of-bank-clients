@@ -3,6 +3,7 @@
 Run first:  python generate_data.py
 Then:       python rfm_analysis.py
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -25,7 +26,9 @@ def _transaction_date(rng: np.random.Generator) -> str:
     offset = rng.integers(0, 455)
     hour = rng.integers(9, 21)
     minute = rng.integers(0, 60)
-    ts = base + np.timedelta64(offset, "D") + np.timedelta64(hour, "h") + np.timedelta64(minute, "m")
+    ts = (
+        base + np.timedelta64(offset, "D") + np.timedelta64(hour, "h") + np.timedelta64(minute, "m")
+    )
     return pd.Timestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
 
 

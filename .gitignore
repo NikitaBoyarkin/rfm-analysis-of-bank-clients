@@ -6,6 +6,7 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+.ruff_cache/
 
 # Environment
 .env
@@ -17,3 +18,8 @@ build/
 data/rfm_output.csv
 data/rfm_output_report.xlsx
 data/sample_report.xlsx
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
