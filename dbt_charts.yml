@@ -1,0 +1,18 @@
+# dbt charts project configuration
+#
+# This file anchors your project root. Running `dct serve` from any
+# subdirectory will walk up to find this file and use its directory
+# as the serve root.
+
+sources:
+  # RFM table — one row per active customer (data/rfm_output.csv).
+  rfm:
+    type: csv
+    files:
+      rfm_output: data/rfm_output.csv
+
+  # Raw transaction log (data/bank_rfm_dataset_10k_fixed.csv).
+  transactions:
+    type: csv
+    files:
+      bank_tx: data/bank_rfm_dataset_10k_fixed.csv

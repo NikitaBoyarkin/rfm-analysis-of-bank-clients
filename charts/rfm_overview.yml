@@ -1,0 +1,127 @@
+title: RFM Overview
+notes: >
+  Segment mix of bank clients, average recency/frequency/monetary per segment,
+  and the recency-vs-frequency scatter. Filters apply to every chart below.
+
+source: rfm
+
+variables:
+  segment:
+    input: multiselect
+    options:
+      query: segment_list
+      column: Segment
+
+queries:
+  segment_list:
+    notes: Distinct segments for the filter dropdown.
+    sql: SELECT DISTINCT Segment FROM rfm_output ORDER BY 1
+
+  kpis:
+    notes: One-row aggregate for the KPI row.
+    sql: |
+      SELECT COUNT(*) AS n_customers,
+             ROUND(AVG(monetary_value)) AS avg_monetary,
+             ROUND(AVG(recency))        AS avg_recency,
+             ROUND(AVG(RFMScore), 2)    AS avg_rfm_score
+      FROM rfm_output
+      WHERE {{ filter('segment', segment) }}
+
+  segment_summary:
+    notes: Per-segment size and RFM averages.
+    sql: |
+      SELECT Segment,
+             COUNT(*)             AS n,
+             ROUND(AVG(recency))  AS avg_recency,
+             ROUND(AVG(frequency)) AS avg_frequency,
+             ROUND(AVG(monetary_value)) AS avg_monetary,
+             ROUND(AVG(RFMScore), 2)    AS avg_rfm_score
+      FROM rfm_output
+      WHERE {{ filter('segment', segment) }}
+      GROUP BY 1
+
+  scatter:
+    notes: One point per customer — recency vs frequency, colored by segment.
+    sql: |
+      SELECT recency, frequency, Segment
+      FROM rfm_output
+      WHERE {{ filter('segment', segment) }}
+
+charts:
+  n_customers:
+    query: kpis
+    type: kpi
+    value: n_customers
+    label: Customers
+    style:
+      value:
+        format: integer
+
+  avg_monetary:
+    query: kpis
+    type: kpi
+    value: avg_monetary
+    label: Avg monetary, RUB
+    style:
+      value:
+        format: currency_whole
+
+  avg_recency:
+    query: kpis
+    type: kpi
+    value: avg_recency
+    label: Avg recency, days
+    style:
+      value:
+        format: integer
+
+  avg_rfm_score:
+    query: kpis
+    type: kpi
+    value: avg_rfm_score
+    label: Avg RFM score
+    style:
+      value:
+        format: number
+
+  segment_size:
+    query: segment_summary
+    type: bar
+    x: Segment
+    y: n
+    title: Clients per segment
+    sort: { by: n, order: desc }
+    style:
+      orientation: vertical
+      number_format: ",.0f"
+
+  monetary_by_segment:
+    query: segment_summary
+    type: bar
+    x: Segment
+    y: avg_monetary
+    title: Average monetary value per segment
+    sort: { by: avg_monetary, order: desc }
+    style:
+      orientation: horizontal
+      number_format: "$,.0f"
+
+  recency_frequency:
+    query: scatter
+    type: scatter
+    x: recency
+    y: frequency
+    color: Segment
+    title: Recency vs frequency
+    height: 420
+
+rows:
+  - cols:
+      - n_customers
+      - avg_monetary
+      - avg_recency
+      - avg_rfm_score
+  - cols:
+      - segment_size
+      - monetary_by_segment
+  - recency_frequency

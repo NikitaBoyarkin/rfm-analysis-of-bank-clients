@@ -23,3 +23,5 @@ data/sample_report.xlsx
 .pytest_cache/
 .coverage
 htmlcov/
+renders/
+*.duckdb

@@ -63,6 +63,25 @@ streamlit run dashboard/app.py   # interactive dashboard (5 tabs)
 ![Recency vs Frequency](images/rfm_scatter.png)
 ![Lorenz curve](images/lorenz_curve.png)
 
+## Visualizations
+
+Declarative dashboards over the same CSV outputs, built with [`dbt-charts`](https://dbtcharts.com) (`dct`). No HTML/JS hand-written — each board is YAML in `charts/`, and every query runs against the registered CSV sources in `dbt_charts.yml`.
+
+```bash
+dct validate charts/ --strict          # structural gate (no warehouse needed)
+dct serve                              # live preview of every board
+mkdir -p renders && dct render charts/rfm_overview.yml --format html --output renders/rfm_overview.html
+```
+
+| Board | What it shows |
+|---|---|
+| `charts/rfm_overview.yml` | KPI row (clients, avg monetary/recency/RFM), clients per segment, avg monetary by segment, recency-vs-frequency scatter |
+| `charts/rfm_matrix.yml` | RFM score distribution, R×F quartile heatmap, top RFM classes |
+| `charts/rfm_concentration.yml` | Concentration ratio per segment, customer vs monetary share, Lorenz curve |
+| `charts/transactions_profile.yml` | Product mix, payment-channel mix, amount by product, anomaly rate by channel |
+
+Boards carry interactive filters (segment / payment method) and render to HTML, PNG, SVG, or PDF.
+
 ## Hypotheses
 
 Five original + three added hypotheses; seven testable on this schema.
@@ -98,6 +117,8 @@ Run `python hypotheses.py` to reproduce.
 | `docs/experiment_winback.md` | A/B design for a win-back campaign (FINER, sample size) |
 | `docs/prd_segment_targeting.md` | PRD — expose `rfm_segment` to marketing |
 | `dashboard/app.py` | Streamlit dashboard (Overview / Segments / RFM map / Concentration / Raw) |
+| `charts/*.yml` | dbt-charts declarative boards (validate + render + serve) |
+| `dbt_charts.yml` | dbt-charts project config — CSV source registry |
 | `presentation/slides.md` | Marp deck summarizing the project |
 
 ## Caveats
@@ -114,6 +135,7 @@ generate_data.py      synthetic dataset generator
 hypotheses.py         testable + untestable hypothesis checks
 utils/                Excel report generation
 dashboard/            Streamlit interactive dashboard
+charts/               dbt-charts declarative YAML boards
 presentation/         Marp slide deck
 docs/                 data dictionary, SQL templates, A/B design, PRD, metrics
 tests/                pytest unit tests (18)

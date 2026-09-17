@@ -1,0 +1,80 @@
+title: RFM Matrix
+notes: >
+  RFM score distribution and the quartile heatmap. The RFMClass matrix shows
+  which R×F×M combos hold the most customers; the histogram shows the score
+  spread (3 = worst, 12 = best).
+
+source: rfm
+
+variables:
+  segment:
+    input: multiselect
+    options:
+      query: segment_list
+      column: Segment
+
+queries:
+  segment_list:
+    notes: Distinct segments for the filter dropdown.
+    sql: SELECT DISTINCT Segment FROM rfm_output ORDER BY 1
+
+  score_hist:
+    notes: Histogram of RFMScore (sum of quartiles, 3..12).
+    sql: |
+      SELECT RFMScore, COUNT(*) AS n
+      FROM rfm_output
+      WHERE {{ filter('segment', segment) }}
+      GROUP BY 1 ORDER BY 1
+
+  heatmap:
+    notes: Customer count per (R_Quartile, F_Quartile) pair.
+    sql: |
+      SELECT R_Quartile, F_Quartile, COUNT(*) AS n
+      FROM rfm_output
+      WHERE {{ filter('segment', segment) }}
+      GROUP BY 1, 2
+
+  class_bars:
+    notes: Most common RFMClass combos, top 12.
+    sql: |
+      SELECT RFMClass, COUNT(*) AS n
+      FROM rfm_output
+      WHERE {{ filter('segment', segment) }}
+      GROUP BY 1 ORDER BY 2 DESC LIMIT 12
+
+charts:
+  score_hist:
+    query: score_hist
+    type: bar
+    x: RFMScore
+    y: n
+    title: RFM score distribution
+    style:
+      color:
+        static: "#4C78A8"
+
+  rfm_heatmap:
+    query: heatmap
+    type: heatmap
+    x: R_Quartile
+    y: F_Quartile
+    color: n
+    title: Customers per R×F quartile
+    x_label: Recency quartile (4 = most recent)
+    y_label: Frequency quartile (4 = most frequent)
+
+  top_classes:
+    query: class_bars
+    type: bar
+    x: RFMClass
+    y: n
+    title: Top RFM classes
+    sort: { by: n, order: desc }
+    style:
+      orientation: horizontal
+
+rows:
+  - score_hist
+  - cols:
+      - rfm_heatmap
+      - top_classes

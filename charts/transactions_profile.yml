@@ -1,0 +1,103 @@
+title: Transactions profile
+notes: >
+  Raw transaction log view — product mix, payment channel mix, and anomaly
+  rates. Uses the full bank_tx table (before the RFM anomaly drop).
+
+source: transactions
+
+variables:
+  payment_method:
+    input: multiselect
+    label: Payment method
+    options:
+      query: pay_list
+      column: payment_method
+
+queries:
+  pay_list:
+    notes: Distinct payment methods for the filter dropdown.
+    sql: SELECT DISTINCT payment_method FROM bank_tx ORDER BY 1
+
+  products:
+    notes: Transaction count per product category.
+    sql: |
+      SELECT product_category, COUNT(*) AS n
+      FROM bank_tx
+      WHERE {{ filter('payment_method', payment_method) }}
+      GROUP BY 1 ORDER BY 2 DESC
+
+  payments:
+    notes: Transaction count per payment method.
+    sql: |
+      SELECT payment_method, COUNT(*) AS n
+      FROM bank_tx
+      WHERE {{ filter('payment_method', payment_method) }}
+      GROUP BY 1 ORDER BY 2 DESC
+
+  amount_by_product:
+    notes: Average and total amount per product category.
+    sql: |
+      SELECT product_category,
+             ROUND(AVG(amount)) AS avg_amount,
+             ROUND(SUM(amount)) AS total_amount
+      FROM bank_tx
+      WHERE {{ filter('payment_method', payment_method) }}
+      GROUP BY 1 ORDER BY 3 DESC
+
+  anomaly_by_method:
+    notes: Anomaly rate per payment method (fraction).
+    sql: |
+      SELECT payment_method,
+             COUNT(*) AS n,
+             ROUND(SUM(is_anomaly) * 1.0 / COUNT(*), 4) AS anomaly_pct
+      FROM bank_tx
+      WHERE {{ filter('payment_method', payment_method) }}
+      GROUP BY 1 ORDER BY 1
+
+charts:
+  product_mix:
+    query: products
+    type: bar
+    x: product_category
+    y: n
+    title: Transactions by product category
+    sort: { by: n, order: desc }
+    style:
+      orientation: horizontal
+
+  payment_mix:
+    query: payments
+    type: donut
+    theta: n
+    color: payment_method
+    title: Payment method mix
+    total: { label: transactions }
+
+  amount_by_product:
+    query: amount_by_product
+    type: bar
+    x: product_category
+    y: total_amount
+    title: Total amount by product category, RUB
+    sort: { by: total_amount, order: desc }
+    style:
+      orientation: horizontal
+      number_format: "$,.0f"
+
+  anomaly_by_method:
+    query: anomaly_by_method
+    type: bar
+    x: payment_method
+    y: anomaly_pct
+    title: Anomaly rate by payment method
+    style:
+      orientation: vertical
+      number_format: ".2%"
+
+rows:
+  - cols:
+      - product_mix
+      - payment_mix
+  - cols:
+      - amount_by_product
+      - anomaly_by_method

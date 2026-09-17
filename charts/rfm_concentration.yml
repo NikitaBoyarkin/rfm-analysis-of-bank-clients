@@ -1,0 +1,80 @@
+title: Monetary concentration
+notes: >
+  Who owns the monetary value. Share of customers vs share of total monetary
+  value per segment, plus the concentration ratio (monetary share / customer
+  share). A ratio > 1 means the segment over-indexes on monetary value.
+
+source: rfm
+
+queries:
+  shares:
+    notes: Per-segment customer and revenue share (fractions), with concentration ratio.
+    sql: |
+      SELECT Segment,
+             COUNT(*)        AS n,
+             SUM(monetary_value) AS m,
+             ROUND(COUNT(*) / (SELECT COUNT(*) FROM rfm_output), 4) AS customer_share,
+             ROUND(SUM(monetary_value) / (SELECT SUM(monetary_value) FROM rfm_output), 4) AS monetary_share,
+             ROUND(SUM(monetary_value) / (SELECT SUM(monetary_value) FROM rfm_output)
+                   / (COUNT(*) / (SELECT COUNT(*) FROM rfm_output)), 2) AS ratio
+      FROM rfm_output
+      GROUP BY 1
+      ORDER BY monetary_share DESC
+
+  lorenz:
+    notes: Lorenz points — cumulative customer and revenue share (fractions) at customer level, sorted by monetary ascending.
+    sql: |
+      WITH ranked AS (
+        SELECT monetary_value,
+               ROW_NUMBER() OVER (ORDER BY monetary_value) AS rn,
+               COUNT(*) OVER () AS total_n,
+               SUM(monetary_value) OVER () AS total_m
+        FROM rfm_output
+      )
+      SELECT ROUND(rn / total_n, 4) AS cum_customers,
+             ROUND(SUM(monetary_value) OVER (ORDER BY rn) / total_m, 4) AS cum_monetary
+      FROM ranked
+      ORDER BY 1
+
+charts:
+  share_ratio:
+    query: shares
+    type: bar
+    x: Segment
+    y: ratio
+    title: Concentration ratio (monetary share / customer share)
+    subtitle: ">1 = over-indexes on monetary value"
+    sort: { by: ratio, order: desc }
+    style:
+      orientation: horizontal
+      number_format: ",.2f"
+
+  share_combo:
+    query: shares
+    type: bar
+    x: Segment
+    y: [customer_share, monetary_share]
+    title: Customer share vs monetary share
+    sort: { by: monetary_share, order: desc }
+    style:
+      stack: none
+      number_format: ".1%"
+
+  lorenz:
+    query: lorenz
+    type: line
+    x: cum_customers
+    y: cum_monetary
+    title: Lorenz curve (concentration)
+    x_label: Cumulative % of customers
+    y_label: Cumulative % of monetary value
+    style:
+      number_format: ".0%"
+      color:
+        static: "#4C78A8"
+
+rows:
+  - share_ratio
+  - cols:
+      - share_combo
+      - lorenz
