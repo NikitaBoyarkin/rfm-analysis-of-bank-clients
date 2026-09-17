@@ -147,14 +147,17 @@ def plot_lorenz_curve(rfm: pd.DataFrame, out_path: Path) -> float:
     fig, ax = plt.subplots()
     ax.plot(cum_c, cum_r, color="#3a6ea5", label="Lorenz curve")
     ax.plot([0, 1], [0, 1], "--", color="grey", label="Equality line")
-    idx20 = max(int(np.ceil(0.2 * len(cum_c))) - 1, 0)
-    ax.axvline(0.2, color="#d33", linestyle=":", alpha=0.6)
-    ax.scatter([0.2], [cum_r[idx20]], color="#d33", zorder=5)
+    # Top-20% of customers (richest) hold 1 - cum_r[0.8n] of revenue.
+    idx80 = max(int(np.ceil(0.8 * len(cum_c))) - 1, 0)
+    top20_share = 1 - cum_r[idx80]
+    ax.axvline(0.8, color="#d33", linestyle=":", alpha=0.6)
+    ax.scatter([0.8], [cum_r[idx80]], color="#d33", zorder=5)
     ax.annotate(
-        f"Top-20% → {cum_r[idx20]:.0%} of revenue",
-        xy=(0.2, cum_r[idx20]),
-        xytext=(0.35, 0.4),
+        f"Top-20% → {top20_share:.0%} of revenue",
+        xy=(0.8, cum_r[idx80]),
+        xytext=(0.4, 0.25),
         fontsize=9,
+        arrowprops={"arrowstyle": "->", "color": "#d33", "alpha": 0.7},
     )
     ax.set_title(f"Lorenz curve — monetary concentration (Gini = {gini:.3f})")
     ax.set_xlabel("Cumulative customers (poorest → richest)")
@@ -247,6 +250,146 @@ def plot_rfm_scatter(scored: pd.DataFrame, out_path: Path) -> None:
     plt.close(fig)
 
 
+def plot_rfm_score_distribution(scored: pd.DataFrame, out_path: Path) -> None:
+    """Histogram of RFM score (3..12) with the mean highlighted."""
+    fig, ax = plt.subplots()
+    bins = np.arange(2.5, 13.5, 1)
+    sns.histplot(scored["RFMScore"], bins=bins, color="#3a6ea5", edgecolor="white", ax=ax)
+    mean_score = scored["RFMScore"].mean()
+    ax.axvline(mean_score, color="#d33", linestyle="--", linewidth=1.2)
+    ax.text(
+        mean_score + 0.15,
+        ax.get_ylim()[1] * 0.95,
+        f"mean = {mean_score:.2f}",
+        color="#d33",
+        fontsize=9,
+        va="top",
+    )
+    ax.set_title("RFM score distribution")
+    ax.set_xlabel("RFM score (3–12)")
+    ax.set_ylabel("Customers")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def plot_rfm_matrix_heatmap(scored: pd.DataFrame, out_path: Path) -> None:
+    """Heatmap: customers per (Recency × Frequency) quartile combo.
+
+    The classic RFM matrix grid. Rows = recency quartile (1 = long ago,
+    4 = recent), columns = frequency quartile (1 = rare, 4 = frequent).
+    Annotates the average monetary value inside each cell.
+    """
+    pivot = scored.pivot_table(
+        index="R_Quartile", columns="F_Quartile", values="customer_id", aggfunc="count"
+    ).sort_index(ascending=False)
+    avg_m = scored.pivot_table(
+        index="R_Quartile", columns="F_Quartile", values="monetary_value", aggfunc="mean"
+    )
+    fig, ax = plt.subplots()
+    sns.heatmap(
+        pivot,
+        annot=True,
+        fmt="d",
+        cmap="viridis",
+        cbar_kws={"label": "Customers"},
+        ax=ax,
+    )
+    for i in range(pivot.shape[0]):
+        for j in range(pivot.shape[1]):
+            ax.text(
+                j + 0.5,
+                i + 0.78,
+                f"{avg_m.iloc[i, j]:,.0f}",
+                ha="center",
+                va="center",
+                fontsize=7,
+                color="white",
+                alpha=0.9,
+            )
+    ax.set_title(
+        "RFM matrix — customers per (Recency × Frequency) quartile\n(avg monetary in cell)"
+    )
+    ax.set_xlabel("Frequency quartile (1 = rare → 4 = frequent)")
+    ax.set_ylabel("Recency quartile (1 = long ago → 4 = recent)")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def plot_revenue_vs_customers_share(scored: pd.DataFrame, out_path: Path) -> None:
+    """Grouped bar: customer share % vs revenue share % per segment.
+
+    Visual version of the concentration ratio. A segment whose revenue bar
+    visibly exceeds its customer bar over-indexes on revenue.
+    """
+    conc = segment_revenue_concentration(scored).sort_values("share_customers_%")
+    y = np.arange(len(conc))
+    height = 0.35
+    fig, ax = plt.subplots()
+    ax.barh(
+        y + height / 2,
+        conc["share_customers_%"],
+        height=height,
+        color="#3a6ea5",
+        label="Customers, %",
+    )
+    ax.barh(
+        y - height / 2,
+        conc["share_revenue_%"],
+        height=height,
+        color="#d33",
+        alpha=0.85,
+        label="Revenue, %",
+    )
+    for yi, (cs, rs) in enumerate(
+        zip(conc["share_customers_%"], conc["share_revenue_%"], strict=True)
+    ):
+        ax.text(cs + 0.4, yi + height / 2, f"{cs:.1f}%", va="center", fontsize=8)
+        ax.text(rs + 0.4, yi - height / 2, f"{rs:.1f}%", va="center", fontsize=8)
+    ax.set_yticks(y, conc["Segment"])
+    ax.set_xlabel("Share of total, %")
+    ax.set_title("Customer share vs revenue share by segment")
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def plot_aov_by_segment(scored: pd.DataFrame, out_path: Path) -> None:
+    """Boxplot: average transaction value (monetary / frequency) per segment."""
+    aov = scored.assign(aov=scored["monetary_value"] / scored["frequency"])
+    order = aov.groupby("Segment")["aov"].median().sort_values(ascending=False).index
+    fig, ax = plt.subplots()
+    sns.boxplot(data=aov, x="aov", y="Segment", order=order, ax=ax, color="#3a6ea5")
+    ax.set_xscale("log")
+    ax.set_title("Average transaction value by segment (log scale)")
+    ax.set_xlabel("AOV = monetary / frequency")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
+def plot_monthly_activity(tx: pd.DataFrame, scored: pd.DataFrame, out_path: Path) -> None:
+    """Monthly revenue and transaction-count trend by segment."""
+    merged = tx.merge(scored[["customer_id", "Segment"]], on="customer_id", how="inner")
+    merged["month"] = merged["transaction_date"].dt.to_period("M")
+    revenue = merged.groupby(["month", "Segment"])["amount"].sum().unstack(fill_value=0)
+    count = merged.groupby(["month", "Segment"]).size().unstack(fill_value=0)
+
+    fig, axs = plt.subplots(2, 1, figsize=(11, 8), sharex=True)
+    revenue.plot(ax=axs[0], marker="o", markersize=3, linewidth=1.5)
+    axs[0].set_title("Monthly revenue by segment")
+    axs[0].set_ylabel("Revenue")
+    count.plot(ax=axs[1], marker="o", markersize=3, linewidth=1.5)
+    axs[1].set_title("Monthly transaction count by segment")
+    axs[1].set_ylabel("Transactions")
+    axs[1].legend(ncols=3, fontsize=8, loc="upper left")
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150)
+    plt.close(fig)
+
+
 def build_rfm(
     input_csv: Path | str = DEFAULT_INPUT,
     output_csv: Path | str = DEFAULT_OUTPUT_CSV,
@@ -276,6 +419,11 @@ def build_rfm(
         plot_monetary_by_segment(scored, CHARTS_DIR / "monetary_by_segment.png")
         plot_rfm_scatter(scored, CHARTS_DIR / "rfm_scatter.png")
         gini = plot_lorenz_curve(scored, CHARTS_DIR / "lorenz_curve.png")
+        plot_rfm_score_distribution(scored, CHARTS_DIR / "rfm_score_distribution.png")
+        plot_rfm_matrix_heatmap(scored, CHARTS_DIR / "rfm_matrix_heatmap.png")
+        plot_revenue_vs_customers_share(scored, CHARTS_DIR / "revenue_vs_customers_share.png")
+        plot_aov_by_segment(scored, CHARTS_DIR / "aov_by_segment.png")
+        plot_monthly_activity(df, scored, CHARTS_DIR / "monthly_activity.png")
         print(f"\nGini coefficient (monetary concentration): {gini:.3f}")
 
     print(f"Rows: {len(scored)} customers across {scored['Segment'].nunique()} segments")

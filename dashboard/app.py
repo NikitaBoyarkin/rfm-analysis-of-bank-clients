@@ -12,6 +12,7 @@ Tabs:
 
 Filters: segment multiselect + recency / monetary ranges.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -122,9 +123,7 @@ with tab_overview:
         )
         conc["share_customers_%"] = (conc["customers"] / conc["customers"].sum() * 100).round(2)
         conc["share_revenue_%"] = (conc["revenue"] / conc["revenue"].sum() * 100).round(2)
-        conc["concentration_ratio"] = (
-            conc["share_revenue_%"] / conc["share_customers_%"]
-        ).round(2)
+        conc["concentration_ratio"] = (conc["share_revenue_%"] / conc["share_customers_%"]).round(2)
         st.dataframe(
             conc.sort_values("share_revenue_%", ascending=False),
             use_container_width=True,
@@ -155,12 +154,7 @@ with tab_seg:
     import seaborn as sns
 
     fig, ax = plt.subplots(figsize=(8, 4))
-    order = (
-        fdf.groupby("Segment")["monetary_value"]
-        .median()
-        .sort_values(ascending=False)
-        .index
-    )
+    order = fdf.groupby("Segment")["monetary_value"].median().sort_values(ascending=False).index
     sns.boxplot(data=fdf, x="monetary_value", y="Segment", order=order, ax=ax)
     ax.set_xscale("log")
     st.pyplot(fig, use_container_width=True)
@@ -174,8 +168,14 @@ with tab_map:
 
     fig, ax = plt.subplots(figsize=(9, 5))
     sns.scatterplot(
-        data=fdf, x="recency", y="frequency", hue="Segment",
-        size="monetary_value", sizes=(15, 120), alpha=0.7, ax=ax,
+        data=fdf,
+        x="recency",
+        y="frequency",
+        hue="Segment",
+        size="monetary_value",
+        sizes=(15, 120),
+        alpha=0.7,
+        ax=ax,
     )
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
     st.pyplot(fig, use_container_width=True)
@@ -189,12 +189,16 @@ with tab_lorenz:
     fig, ax = plt.subplots(figsize=(7, 6))
     ax.plot(cum_c, cum_r, color="#3a6ea5", label="Lorenz curve")
     ax.plot([0, 1], [0, 1], "--", color="grey", label="Equality line")
-    idx20 = max(int(np.ceil(0.2 * len(cum_c))) - 1, 0)
-    ax.axvline(0.2, color="#d33", linestyle=":", alpha=0.6)
-    ax.scatter([0.2], [cum_r[idx20]], color="#d33", zorder=5)
+    idx20 = max(int(np.ceil(0.8 * len(cum_c))) - 1, 0)
+    top20_share = 1 - cum_r[idx20]
+    ax.axvline(0.8, color="#d33", linestyle=":", alpha=0.6)
+    ax.scatter([0.8], [cum_r[idx20]], color="#d33", zorder=5)
     ax.annotate(
-        f"Top-20% → {cum_r[idx20]:.0%} of revenue",
-        xy=(0.2, cum_r[idx20]), xytext=(0.35, 0.4), fontsize=9,
+        f"Top-20% → {top20_share:.0%} of revenue",
+        xy=(0.8, cum_r[idx20]),
+        xytext=(0.4, 0.25),
+        fontsize=9,
+        arrowprops={"arrowstyle": "->", "color": "#d33", "alpha": 0.7},
     )
     ax.set_xlabel("Cumulative customers (poorest → richest)")
     ax.set_ylabel("Cumulative revenue")
@@ -209,9 +213,16 @@ with tab_raw:
     st.dataframe(
         fdf[
             [
-                "customer_id", "recency", "frequency", "monetary_value",
-                "R_Quartile", "F_Quartile", "M_Quartile",
-                "RFMClass", "RFMScore", "Segment",
+                "customer_id",
+                "recency",
+                "frequency",
+                "monetary_value",
+                "R_Quartile",
+                "F_Quartile",
+                "M_Quartile",
+                "RFMClass",
+                "RFMScore",
+                "Segment",
             ]
         ].sort_values("RFMScore", ascending=False),
         use_container_width=True,

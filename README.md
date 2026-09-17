@@ -58,10 +58,108 @@ streamlit run dashboard/app.py   # interactive dashboard (5 tabs)
 
 **Monetary concentration:** Gini = 0.533 — Champions over-index on revenue (ratio 2.66), Hibernating under-indexes (ratio 0.62).
 
+## Chart gallery
+
+Every chart below follows the same reading order: **what it shows** (description) → the chart → **what it means** (insights).
+
+### 1. Segment distribution
+
+**Description.** Horizontal bar chart of customer counts per RFM segment, ordered from most to least populated. Answers the first portfolio question: how big is each cluster of the client base?
+
 ![Segment distribution](images/segment_distribution.png)
+
+**Insights.**
+- **Hibernating (752, 38%)** is the single largest pool — nearly 4 out of 10 clients sit in the low-engagement bucket.
+- **Champions (83, 4%)** is tiny but strategically critical; **At Risk (232)** sits right next to it as the imminent-churn group.
+- Combined, **At Risk + Hibernating ≈ 50% of the base** — the main re-engagement opportunity.
+
+### 2. Monetary by segment
+
+**Description.** Boxplot of lifetime monetary value per customer by segment (log scale), ordered by segment median. Shows where high spenders actually live.
+
 ![Monetary by segment](images/monetary_by_segment.png)
+
+**Insights.**
+- **Champions and Potential Loyalists** have the highest medians and the widest right tails — value concentrates in exactly the segments scoring highest on R/F.
+- **Need Attention** has the lowest spend distribution — many recent-but-small accounts with limited upside.
+- The log-scale spread confirms heavy skew: within every segment a small minority dominates spend.
+
+### 3. Recency vs Frequency (size = Monetary)
+
+**Description.** Scatter of every customer by recency (days since last transaction) and frequency; point size encodes monetary value, color encodes segment. The canonical RFM map in one view.
+
 ![Recency vs Frequency](images/rfm_scatter.png)
+
+**Insights.**
+- **Champions** cluster in the low-recency / high-frequency corner (top-left); **Hibernating** fills the bottom-right.
+- **At Risk** overlaps Hibernating on recency but keeps higher frequency — the clearest win-back target before they slide.
+- Bubble size shows the long tail of high-monetary clients spread across several segments, not only Champions.
+
+### 4. Lorenz curve — monetary concentration
+
+**Description.** Cumulative share of revenue vs cumulative share of customers (poorest → richest). The distance from the equality diagonal is the inequality, summarized by the Gini coefficient.
+
 ![Lorenz curve](images/lorenz_curve.png)
+
+**Insights.**
+- **Gini = 0.533** — strongly unequal distribution of monetary value.
+- **Top-20% of customers generate ~60% of revenue**, confirming the Pareto-like shape.
+- Segmentation has business sense: a small share of clients drives the bulk of value, so targeting the right segment pays off disproportionately.
+
+### 5. RFM score distribution
+
+**Description.** Histogram of the composite RFM score (3–12) across all customers; dashed line marks the mean (7.28). A quick shape check of overall engagement health.
+
+![RFM score distribution](images/rfm_score_distribution.png)
+
+**Insights.**
+- The distribution is roughly bell-shaped around a mean of **7.28**, slightly below the midpoint of 7.5 — the base skews toward lower engagement.
+- Left tail (scores 3–4, ~364 clients) is the dormant mass; right tail (score 12, 83 clients) is exactly the Champions count.
+- Fewer clients at the extremes than in the middle — most of the book is "average," which is where segmentation adds the most leverage.
+
+### 6. RFM matrix heatmap
+
+**Description.** 4×4 grid of customer counts per (Recency × Frequency) quartile combo — the classic RFM matrix. Cell shade = count; number inside each cell = average monetary value of that cell.
+
+![RFM matrix heatmap](images/rfm_matrix_heatmap.png)
+
+**Insights.**
+- The **(R=4, F=4)** cell (recent + frequent, 173 clients) is the Champions core with avg monetary ≈ 46k.
+- The **(R=1, F=1)** corner (278 clients) is the deep-sleep mass — the single largest cell.
+- **Avg monetary rises more with frequency than with recency** (reading down columns vs across rows) — frequency is the stronger value signal, so retention campaigns should target frequency, not just freshness.
+
+### 7. Customer share vs revenue share by segment
+
+**Description.** Grouped horizontal bars: each segment's share of customers (%) against its share of revenue (%). A revenue bar visibly longer than the customer bar means the segment over-indexes on value.
+
+![Customer vs revenue share](images/revenue_vs_customers_share.png)
+
+**Insights.**
+- **Champions: 4.2% of clients → 11.2% of revenue** (ratio 2.67) — the single most valuable segment to protect and reward.
+- **Need Attention: 19.9% of clients → only 7.0% of revenue** (ratio 0.35) — a cost-reduction candidate, not an investment target.
+- **Hibernating: 38% of clients → 23.7% of revenue** (ratio 0.62) — worth cheap win-back touches, but cap campaign spend per client.
+
+### 8. Average transaction value by segment
+
+**Description.** Boxplot of average transaction value (AOV = monetary / frequency) per customer by segment, log scale. Splits "big spenders" into "few large purchases" vs "many small purchases".
+
+![AOV by segment](images/aov_by_segment.png)
+
+**Insights.**
+- **Potential Loyalists and Champions have the highest AOV** (median ≈ 8.7k) — they buy big per transaction, not just often.
+- **Need Attention has the lowest AOV** (≈ 2.3k) — recent but small tickets.
+- For Hibernating/Need Attention, **raising AOV is more realistic than raising frequency first** — a focused upsell beats a broad engagement push.
+
+### 9. Monthly activity by segment
+
+**Description.** Monthly revenue (top panel) and transaction count (bottom panel) by segment across the full 15-month window. Shows how each segment's activity evolves over time.
+
+![Monthly activity](images/monthly_activity.png)
+
+**Insights.**
+- **Hibernating's volume and revenue decay visibly over the window** — its share is front-loaded in early months, which is exactly the pattern the Recency metric captures.
+- **Champions and Loyal stay flat** through the window despite small client counts — stable, reliable revenue.
+- The late-window decline in At Risk activity tracks how quickly they approach Hibernating status; intervention timing should sit in this window.
 
 ## Visualizations
 
