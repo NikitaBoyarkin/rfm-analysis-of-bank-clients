@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-test:
+    name: lint + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.11"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --all-extras
+      - name: Lint (ruff)
+        run: uv run ruff check .
+      - name: Test (pytest)
+        run: uv run pytest
+
+  boards:
+    name: validate dbt-charts boards
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate boards
+        run: uvx --from dbt-charts dct validate charts/ --strict
