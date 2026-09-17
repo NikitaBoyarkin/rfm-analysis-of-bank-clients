@@ -27,5 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.1.0
       - name: Validate boards
         run: uvx --from dbt-charts dct validate charts/ --strict
