@@ -48,14 +48,10 @@ def _add_sheet(wb: Workbook, df: pd.DataFrame, sheet_name: str, is_summary: bool
             elif not is_summary and r_idx % 2 == 0:
                 cell.fill = PatternFill(start_color=COLOR_GRAY, fill_type="solid")
             if isinstance(value, (int, float)) and r_idx > 1:
-                if abs(value) >= 1000000:
-                    cell.number_format = '#,##0,,"M"'
-                elif abs(value) >= 1000:
-                    cell.number_format = "#,##0"
-                elif 0 < abs(value) < 1:
-                    cell.number_format = "0.00%"
-                else:
-                    cell.number_format = "#,##0"
+                # Format by the value's own precision, not its magnitude: a
+                # magnitude heuristic turned scores (7.28) into "7" and every
+                # fraction (e.g. a Gini of 0.533) into a percentage.
+                cell.number_format = "#,##0.00" if isinstance(value, float) else "#,##0"
     for column in ws.columns:
         max_length = max((len(str(c.value)) for c in column if c.value is not None), default=0)
         letter = column[0].column_letter
@@ -97,7 +93,7 @@ def generate_rfm_excel(
         }
     )
     data_dict = {
-        "Summary": summary_df,
+        "Overview": summary_df,
         "Segments": segment_summary,
         "Customer_RFM": rfm_data[
             [

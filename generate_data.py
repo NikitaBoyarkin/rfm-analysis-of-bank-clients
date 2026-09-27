@@ -21,7 +21,7 @@ PAYMENT_PROBS = [0.50, 0.20, 0.15, 0.10, 0.05]
 
 
 def _transaction_date(rng: np.random.Generator) -> str:
-    """Random transaction timestamp between 2023-01-01 and 2024-04-01."""
+    """Random transaction timestamp between 2023-01-01 and 2024-03-30."""
     base = np.datetime64("2023-01-01")
     offset = rng.integers(0, 455)
     hour = rng.integers(9, 21)
@@ -52,9 +52,11 @@ def generate_and_save_dataset(
     print(f"Generating {n_rows} rows, {n_customers} customers...")
     rng = np.random.default_rng(seed)
 
-    # 5% of transactions are large anomalies
+    # 5% of transactions are large anomalies. One mask drives both the amount
+    # and the flag, so is_anomaly marks exactly the rows it claims to.
+    anomaly_mask = rng.random(n_rows) < 0.05
     amount = np.where(
-        rng.random(n_rows) < 0.05,
+        anomaly_mask,
         rng.uniform(15000, 100000, n_rows),
         rng.exponential(scale=2500, size=n_rows) + 500,
     ).round(2)
@@ -65,7 +67,7 @@ def generate_and_save_dataset(
         "amount": amount,
         "product_category": rng.choice(PRODUCTS, p=PRODUCT_PROBS, size=n_rows),
         "payment_method": rng.choice(PAYMENTS, p=PAYMENT_PROBS, size=n_rows),
-        "is_anomaly": np.where(rng.random(n_rows) < 0.05, 1, 0),
+        "is_anomaly": anomaly_mask.astype(int),
     }
     df = pd.DataFrame(data)
 
@@ -73,7 +75,7 @@ def generate_and_save_dataset(
         assert len(values) == n_rows, f"Length mismatch in {col}"
 
     Path(output).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output, index=False, encoding="utf-8-sig")
+    df.to_csv(output, index=False, encoding="utf-8")
     print(f"Saved {len(df)} rows -> {output}")
     print(df.head())
     return df

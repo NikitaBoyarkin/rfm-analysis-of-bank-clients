@@ -6,7 +6,18 @@ notes: >
 
 source: rfm
 
+variables:
+  segment:
+    input: multiselect
+    options:
+      query: segment_list
+      column: Segment
+
 queries:
+  segment_list:
+    notes: Distinct segments for the filter dropdown.
+    sql: SELECT DISTINCT Segment FROM rfm_output ORDER BY 1
+
   shares:
     notes: Per-segment customer and revenue share (fractions), with concentration ratio.
     sql: |
@@ -18,6 +29,7 @@ queries:
              ROUND(SUM(monetary_value) / (SELECT SUM(monetary_value) FROM rfm_output)
                    / (COUNT(*) / (SELECT COUNT(*) FROM rfm_output)), 2) AS ratio
       FROM rfm_output
+      WHERE {{ filter('segment', segment) }}
       GROUP BY 1
       ORDER BY monetary_share DESC
 
@@ -30,6 +42,7 @@ queries:
                COUNT(*) OVER () AS total_n,
                SUM(monetary_value) OVER () AS total_m
         FROM rfm_output
+        WHERE {{ filter('segment', segment) }}
       )
       SELECT ROUND(rn / total_n, 4) AS cum_customers,
              ROUND(SUM(monetary_value) OVER (ORDER BY rn) / total_m, 4) AS cum_monetary

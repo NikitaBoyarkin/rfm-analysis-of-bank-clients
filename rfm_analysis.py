@@ -6,7 +6,7 @@ Scoring convention (industry standard, higher = better):
     R_Quartile: 4 = most recent, 1 = longest ago
     F_Quartile: 4 = most frequent, 1 = rarest
     M_Quartile: 4 = highest spend, 1 = lowest
-    RFMClass: 3-digit string, "444" = Champion, "111" = Lost
+    RFMClass: 3-digit string, "444" = best, "111" = worst
     RFMScore:  sum 3..12, higher = better
 """
 
@@ -46,13 +46,20 @@ def drop_anomalies(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_rfm_table(df: pd.DataFrame, snapshot_date: pd.Timestamp | None = None) -> pd.DataFrame:
-    """Aggregate per-customer Recency / Frequency / Monetary value."""
+    """Aggregate per-customer Recency / Frequency / Monetary value.
+
+    Recency is whole days against a snapshot date; without an explicit one the
+    snapshot is the day after the last transaction, so the most recent customer
+    scores recency = 1, never 0.
+    """
+    if df.empty:
+        raise ValueError("no transactions to score (empty input)")
     if snapshot_date is None:
         snapshot_date = df["transaction_date"].max().normalize() + pd.Timedelta(days=1)
     rfm = (
         df.groupby("customer_id")
         .agg(
-            recency=("transaction_date", lambda x: (snapshot_date - x.max()).days),
+            recency=("transaction_date", lambda x: (snapshot_date - x.max().normalize()).days),
             frequency=("transaction_date", "count"),
             monetary_value=("amount", "sum"),
         )
@@ -61,14 +68,31 @@ def build_rfm_table(df: pd.DataFrame, snapshot_date: pd.Timestamp | None = None)
     return rfm
 
 
+def _quartile(series: pd.Series, higher_is_better: bool) -> pd.Series:
+    """Rank-based 1..4 quartile score, total for any input size.
+
+    pd.qcut raises "Bin edges must be unique" when quantile edges coincide
+    (heavy ties, n < 4, a single-day window), so rank first and bin the ranks:
+    equal-sized groups wherever possible, a defined answer everywhere else.
+    """
+    n = series.shape[0]
+    if n == 0:
+        return pd.Series([], dtype=int, index=series.index)
+    ranks = series.rank(method="first").to_numpy()
+    quartiles = np.clip(np.ceil(ranks / n * 4), 1, 4).astype(int)
+    if not higher_is_better:
+        quartiles = 5 - quartiles
+    return pd.Series(quartiles, index=series.index)
+
+
 def score_quartiles(rfm: pd.DataFrame) -> pd.DataFrame:
     """Assign 1..4 quartile scores. Higher = better for all three."""
     scored = rfm.copy()
     # Recency: small value (recent) = good -> label 4
-    scored["R_Quartile"] = pd.qcut(scored["recency"], 4, labels=[4, 3, 2, 1]).astype(int)
+    scored["R_Quartile"] = _quartile(scored["recency"], higher_is_better=False)
     # Frequency, Monetary: large value = good -> label 4
-    scored["F_Quartile"] = pd.qcut(scored["frequency"], 4, labels=[1, 2, 3, 4]).astype(int)
-    scored["M_Quartile"] = pd.qcut(scored["monetary_value"], 4, labels=[1, 2, 3, 4]).astype(int)
+    scored["F_Quartile"] = _quartile(scored["frequency"], higher_is_better=True)
+    scored["M_Quartile"] = _quartile(scored["monetary_value"], higher_is_better=True)
     scored["RFMClass"] = (
         scored["R_Quartile"].astype(str)
         + scored["F_Quartile"].astype(str)
@@ -89,7 +113,7 @@ def assign_segment(row: pd.Series) -> str:
         return "Champions"
     if r >= 3 and f >= 3 and m >= 3:
         return "Loyal"
-    if r >= 3 and m >= 3:
+    if r >= 3 and f >= 2 and m >= 3:
         return "Potential Loyalists"
     if r <= 2 and f >= 3:
         return "At Risk"
@@ -128,10 +152,14 @@ def lorenz_gini(rfm: pd.DataFrame) -> tuple[float, np.ndarray, np.ndarray]:
     has business sense (vs. uniform revenue). Pattern from olist reference.
     Returns (gini, cumulative_customers_share, cumulative_revenue_share).
     """
-    m = rfm["monetary_value"].sort_values().values
+    m = np.sort(rfm["monetary_value"].to_numpy())
     n = m.size
-    cum_customers = np.arange(1, n + 1) / n
-    cum_revenue = np.cumsum(m) / m.sum()
+    if n == 0 or m.sum() == 0:
+        return 0.0, np.array([0.0]), np.array([0.0])
+    # Both axes start at the (0, 0) origin; without that anchor the trapezoid
+    # starts at 1/n and the Gini is biased (0.25 for two equal values).
+    cum_customers = np.concatenate([[0.0], np.arange(1, n + 1) / n])
+    cum_revenue = np.concatenate([[0.0], np.cumsum(m) / m.sum()])
     # Version-agnostic trapezoidal integral (np.trapz was removed in numpy 2.0).
     area = float(np.sum(np.diff(cum_customers) * (cum_revenue[:-1] + cum_revenue[1:]) / 2))
     gini = 1 - 2 * area
@@ -280,12 +308,20 @@ def plot_rfm_matrix_heatmap(scored: pd.DataFrame, out_path: Path) -> None:
     4 = recent), columns = frequency quartile (1 = rare, 4 = frequent).
     Annotates the average monetary value inside each cell.
     """
-    pivot = scored.pivot_table(
-        index="R_Quartile", columns="F_Quartile", values="customer_id", aggfunc="count"
-    ).sort_index(ascending=False)
+    pivot = (
+        scored.pivot_table(
+            index="R_Quartile", columns="F_Quartile", values="customer_id", aggfunc="count"
+        )
+        .sort_index(ascending=False)
+        .fillna(0)
+        .astype(int)
+    )
+    # An empty (R, F) combination makes pivot_table emit NaN, which turns the
+    # whole table float and breaks seaborn's "d" annotation format — zero the
+    # hole and keep integer counts.
     avg_m = scored.pivot_table(
         index="R_Quartile", columns="F_Quartile", values="monetary_value", aggfunc="mean"
-    )
+    ).reindex(index=pivot.index, columns=pivot.columns)
     fig, ax = plt.subplots()
     sns.heatmap(
         pivot,
@@ -297,10 +333,11 @@ def plot_rfm_matrix_heatmap(scored: pd.DataFrame, out_path: Path) -> None:
     )
     for i in range(pivot.shape[0]):
         for j in range(pivot.shape[1]):
+            count = pivot.iloc[i, j]
             ax.text(
                 j + 0.5,
                 i + 0.78,
-                f"{avg_m.iloc[i, j]:,.0f}",
+                f"{avg_m.iloc[i, j]:,.0f}" if count else "",
                 ha="center",
                 va="center",
                 fontsize=7,

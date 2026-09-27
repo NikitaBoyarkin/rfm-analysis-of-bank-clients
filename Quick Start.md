@@ -4,7 +4,7 @@
 # 1. Environment
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt      # or: uv sync
+pip install -e ".[dev,dashboard]"    # or: uv sync --all-extras
 
 # 2. Generate the synthetic dataset
 python generate_data.py

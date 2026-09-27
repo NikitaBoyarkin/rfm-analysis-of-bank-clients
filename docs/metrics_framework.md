@@ -6,14 +6,14 @@ Maps the RFM segmentation to a product metrics system using **Input → Output �
 
 | Segment | Size | Revenue share | Primary lever | Leading metric to move | Lagging metric to protect |
 |---|---:|---:|---|---|---|
-| Champions | 83 (4%) | 11% | Retention / referral | Referral invites sent, NPS | 90-day churn, LTV |
-| Loyal | 311 (16%) | 23% | Cross-sell depth | Distinct product categories | 90-day churn |
-| Potential Loyalists | 208 (11%) | 18% | Frequency lift | Txns / month | Monetary per quarter |
-| At Risk | 232 (12%) | 17% | Re-engagement | Time-to-next-txn | 30-day reactivation rate |
-| Need Attention | 395 (20%) | 7% | Upsell to lift M | Avg txn amount | Silent churn (no txn 60d) |
-| Hibernating | 752 (38%) | 24%* | Cheap win-back | Email reactivation rate | Cost per reactivation |
+| Champions | 126 (6.4%) | 12.1% | Retention / referral | Referral invites sent, NPS | 90-day churn, LTV |
+| Loyal | 376 (19.0%) | 27.1% | Cross-sell depth | Distinct product categories | 90-day churn |
+| Potential Loyalists | 79 (4.0%) | 4.6% | Frequency lift | Txns / month | Monetary per quarter |
+| At Risk | 349 (17.6%) | 23.6% | Re-engagement | Time-to-next-txn | 30-day reactivation rate |
+| Need Attention | 410 (20.7%) | 12.8% | Upsell to lift M | Avg txn amount | Silent churn (no txn 60d) |
+| Hibernating | 643 (32.4%) | 19.7%* | Cheap win-back | Email reactivation rate | Cost per reactivation |
 
-*Hibernating's 24% revenue share is historical; going forward it contributes little — the concentration ratio is 0.62 (under-indexes vs customer share).
+*Hibernating's 19.7% revenue share is historical; going forward it contributes little — the concentration ratio is 0.61 (under-indexes vs customer share).
 
 ## Input → Output → Outcome
 

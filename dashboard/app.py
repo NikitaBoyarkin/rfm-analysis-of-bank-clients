@@ -15,6 +15,7 @@ Filters: segment multiselect + recency / monetary ranges.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -23,6 +24,18 @@ import pandas as pd
 import streamlit as st
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+# Import the pipeline's own functions instead of re-deriving them here: this
+# file, rfm_analysis.build_rfm and charts/rfm_concentration.yml each held a
+# private copy of these formulas, and the copies had already drifted apart.
+from rfm_analysis import (  # noqa: E402
+    lorenz_gini,
+    segment_revenue_concentration,
+    segment_summary,
+)
+
 RFM_CSV = REPO_ROOT / "data" / "rfm_output.csv"
 
 st.set_page_config(page_title="RFM — bank clients", page_icon="🏦", layout="wide")
@@ -31,20 +44,9 @@ st.set_page_config(page_title="RFM — bank clients", page_icon="🏦", layout="
 # ---------------------------------------------------------------------------
 # Data loading (cached)
 # ---------------------------------------------------------------------------
-@st.cache_data
+@st.cache_data(ttl=60)
 def load_rfm(path: str) -> pd.DataFrame:
-    df = pd.read_csv(path)
-    return df
-
-
-def lorenz_gini(m: pd.Series) -> tuple[float, np.ndarray, np.ndarray]:
-    vals = m.sort_values().values
-    n = vals.size
-    cum_c = np.arange(1, n + 1) / n
-    cum_r = np.cumsum(vals) / vals.sum()
-    area = float(np.sum(np.diff(cum_c) * (cum_r[:-1] + cum_r[1:]) / 2))
-    gini = 1 - 2 * area
-    return gini, cum_c, cum_r
+    return pd.read_csv(path)
 
 
 if not RFM_CSV.exists():
@@ -52,6 +54,9 @@ if not RFM_CSV.exists():
     st.stop()
 
 df = load_rfm(str(RFM_CSV))
+if df.empty:
+    st.error("data/rfm_output.csv has no rows — re-run `python rfm_analysis.py`.")
+    st.stop()
 
 # ---------------------------------------------------------------------------
 # Sidebar filters
@@ -60,13 +65,23 @@ st.sidebar.header("Filters")
 segments_all = sorted(df["Segment"].unique())
 seg_sel = st.sidebar.multiselect("Segment", segments_all, default=segments_all)
 
+# st.slider raises StreamlitAPIException when min == max (a constant column, or
+# a single surviving row), so fall back to a fixed range rather than crashing.
 r_min, r_max = int(df["recency"].min()), int(df["recency"].max())
-recency_range = st.sidebar.slider("Recency (days)", r_min, r_max, (r_min, r_max))
+if r_min < r_max:
+    recency_range = st.sidebar.slider("Recency (days)", r_min, r_max, (r_min, r_max))
+else:
+    recency_range = (r_min, r_max)
+    st.sidebar.caption(f"Recency: {r_min} days (single value)")
 
 m_min, m_max = float(df["monetary_value"].min()), float(df["monetary_value"].max())
-monetary_range = st.sidebar.slider(
-    "Monetary value", float(m_min), float(m_max), (float(m_min), float(m_max))
-)
+if m_min < m_max:
+    monetary_range = st.sidebar.slider(
+        "Monetary value", float(m_min), float(m_max), (float(m_min), float(m_max))
+    )
+else:
+    monetary_range = (m_min, m_max)
+    st.sidebar.caption(f"Monetary value: {m_min:,.2f} (single value)")
 
 mask = (
     df["Segment"].isin(seg_sel)
@@ -74,6 +89,10 @@ mask = (
     & df["monetary_value"].between(*monetary_range)
 )
 fdf = df[mask].copy()
+
+if fdf.empty:
+    st.warning("No customers match the current filters — widen the ranges or reselect a segment.")
+    st.stop()
 
 st.sidebar.caption(f"Showing **{len(fdf)}** / {len(df)} customers")
 
@@ -84,7 +103,7 @@ st.title("RFM segmentation — bank clients")
 st.caption(
     f"Synthetic transaction log • snapshot = max txn + 1 day • "
     f"{len(df)} active customers • Gini = "
-    f"{lorenz_gini(df['monetary_value'])[0]:.3f}"
+    f"{lorenz_gini(df[['monetary_value']])[0]:.3f} (all customers, unfiltered)"
 )
 
 tab_overview, tab_seg, tab_map, tab_lorenz, tab_raw = st.tabs(
@@ -104,28 +123,20 @@ with tab_overview:
     col_a, col_b = st.columns(2)
     with col_a:
         st.subheader("Segment distribution")
-        order = fdf["Segment"].value_counts().index
+        counts = fdf["Segment"].value_counts()
         fig, ax = plt.subplots(figsize=(7, 4))
-        counts = fdf["Segment"].value_counts().reindex(order)
         ax.barh(counts.index, counts.values, color="#3a6ea5")
         for i, v in enumerate(counts.values):
             ax.text(v, i, f" {int(v)}", va="center", fontsize=9)
         ax.set_xlabel("Customers")
         ax.invert_yaxis()
         st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
 
     with col_b:
         st.subheader("Revenue concentration")
-        conc = (
-            fdf.groupby("Segment")
-            .agg(customers=("customer_id", "count"), revenue=("monetary_value", "sum"))
-            .reset_index()
-        )
-        conc["share_customers_%"] = (conc["customers"] / conc["customers"].sum() * 100).round(2)
-        conc["share_revenue_%"] = (conc["revenue"] / conc["revenue"].sum() * 100).round(2)
-        conc["concentration_ratio"] = (conc["share_revenue_%"] / conc["share_customers_%"]).round(2)
         st.dataframe(
-            conc.sort_values("share_revenue_%", ascending=False),
+            segment_revenue_concentration(fdf),
             use_container_width=True,
             hide_index=True,
         )
@@ -135,20 +146,7 @@ with tab_overview:
 # ---------------------------------------------------------------------------
 with tab_seg:
     st.subheader("Per-segment summary")
-    summary = (
-        fdf.groupby("Segment")
-        .agg(
-            customers=("customer_id", "count"),
-            avg_recency=("recency", "mean"),
-            avg_frequency=("frequency", "mean"),
-            avg_monetary=("monetary_value", "mean"),
-            avg_rfm_score=("RFMScore", "mean"),
-        )
-        .round(2)
-        .reset_index()
-        .sort_values("avg_rfm_score", ascending=False)
-    )
-    st.dataframe(summary, use_container_width=True, hide_index=True)
+    st.dataframe(segment_summary(fdf), use_container_width=True, hide_index=True)
 
     st.subheader("Monetary value by segment (log scale)")
     import seaborn as sns
@@ -158,6 +156,7 @@ with tab_seg:
     sns.boxplot(data=fdf, x="monetary_value", y="Segment", order=order, ax=ax)
     ax.set_xscale("log")
     st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 # ---------------------------------------------------------------------------
 # RFM map
@@ -179,12 +178,13 @@ with tab_map:
     )
     ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left", fontsize=8)
     st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 # ---------------------------------------------------------------------------
 # Concentration
 # ---------------------------------------------------------------------------
 with tab_lorenz:
-    gini, cum_c, cum_r = lorenz_gini(fdf["monetary_value"])
+    gini, cum_c, cum_r = lorenz_gini(fdf[["monetary_value"]])
     st.subheader(f"Lorenz curve — Gini = {gini:.3f}")
     fig, ax = plt.subplots(figsize=(7, 6))
     ax.plot(cum_c, cum_r, color="#3a6ea5", label="Lorenz curve")
@@ -204,6 +204,7 @@ with tab_lorenz:
     ax.set_ylabel("Cumulative revenue")
     ax.legend(loc="upper left")
     st.pyplot(fig, use_container_width=True)
+    plt.close(fig)
 
 # ---------------------------------------------------------------------------
 # Raw

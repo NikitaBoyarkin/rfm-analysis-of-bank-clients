@@ -59,7 +59,7 @@ SELECT
   CASE
     WHEN r_quartile >= 4 AND f_quartile >= 4 AND m_quartile >= 4 THEN 'Champions'
     WHEN r_quartile >= 3 AND f_quartile >= 3 AND m_quartile >= 3 THEN 'Loyal'
-    WHEN r_quartile >= 3 AND m_quartile >= 3                    THEN 'Potential Loyalists'
+    WHEN r_quartile >= 3 AND f_quartile >= 2 AND m_quartile >= 3 THEN 'Potential Loyalists'
     WHEN r_quartile <= 2 AND f_quartile >= 3                    THEN 'At Risk'
     WHEN r_quartile <= 2 AND f_quartile <= 2                    THEN 'Hibernating'
     ELSE 'Need Attention'

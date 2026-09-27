@@ -13,7 +13,7 @@ npx marp@latest presentation/slides.md -o presentation/slides.html
 
 Or open in any Marp-aware editor (VS Code Marp extension) for live preview.
 
-## Contents (12 slides)
+## Contents (10 slides)
 
 1. Title
 2. Problem
