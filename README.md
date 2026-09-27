@@ -18,7 +18,7 @@ uv sync --all-extras          # or: pip install -e ".[dev,dashboard]"
 python generate_data.py       # builds data/bank_rfm_dataset_10k_fixed.csv
 python rfm_analysis.py        # writes data/rfm_output.csv, data/rfm_output_report.xlsx, images/*.png
 python hypotheses.py          # runs the testable hypotheses over the RFM output
-pytest                        # 18 unit tests on the pure pipeline functions
+pytest                        # 47 tests — pure pipeline functions + README/CSV binding
 streamlit run dashboard/app.py   # interactive dashboard (5 tabs)
 ```
 
@@ -239,7 +239,7 @@ dashboard/            Streamlit interactive dashboard
 charts/               dbt-charts declarative YAML boards
 presentation/         Marp slide deck
 docs/                 data dictionary, SQL templates, A/B design, PRD, metrics
-tests/                pytest unit tests (18)
+tests/                pytest suite (47)
 data/                 dataset + outputs (gitignored where regenerable)
 images/               charts
 renders/              dbt-charts HTML/PNG renders (gitignored where regenerable)

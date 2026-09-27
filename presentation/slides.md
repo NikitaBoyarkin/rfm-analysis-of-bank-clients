@@ -120,7 +120,7 @@ generate_data.py      synthetic dataset (seed 42)
 hypotheses.py         5 testable + 3 untestable checks
 dashboard/app.py      Streamlit dashboard (5 tabs)
 docs/                 data dictionary, SQL templates, A/B design, PRD, metrics
-tests/                18 unit tests (pytest)
+tests/                47 tests (pytest)
 presentation/         this deck (Marp)
 ```
 
