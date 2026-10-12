@@ -1,5 +1,45 @@
 # RFM analysis of bank clients
 
+> RFM segmentation of 1,983 bank clients on 9,492 transactions: Gini 0.324, top 20% hold 38.2% of revenue, mean RFM score 7.50.
+
+## Navigation
+- 🌐 [Portfolio site](https://nikitaboyarkin.github.io)
+- 🏦 [Flagship case: Volta neobank](https://github.com/NikitaBoyarkin/volta-banking)
+- 🧪 Related: [sql-analytics-case-study](https://github.com/NikitaBoyarkin/sql-analytics-case-study) · [churn-prediction](https://github.com/NikitaBoyarkin/churn-prediction) · [tableau_cohort_analysis](https://github.com/NikitaBoyarkin/tableau_cohort_analysis)
+
+**On this page:** [Situation](#situation) · [Task](#task) · [Actions](#actions) · [Result](#result) · [Background](#background) · [Method](#method) · [Results](#results) · [Chart gallery](#chart-gallery) · [Hypotheses](#hypotheses) · [Recommendations](#recommendations) · [Project layout](#project-layout)
+
+## Situation
+
+A retail bank's transaction log gives no unified view of client value: who is
+worth protecting, who is about to churn, and which segment marketing should
+target. Segment bank clients by transaction behavior using **Recency, Frequency,
+Monetary** scoring, then map quartile combos to named segments and ship the
+result as CSV + Excel + charts + an interactive dashboard.
+
+## Task
+
+Turn one synthetic transaction log into a targetable segment per customer, and
+prove the segmentation has business sense rather than assuming it.
+
+## Actions
+
+- **Load & clean** — parse dates, drop rows flagged `is_anomaly == 1`.
+- **RFM table** — per `customer_id`: `recency`, `frequency`, `monetary_value`.
+- **Score quartiles 1..4** and derive a 3-digit `RFMClass` + `RFMScore` (3..12).
+- **Segment** combo-based (not sum-based), so `444` and `233` no longer share a bucket.
+- **Concentration** — Lorenz curve + Gini coefficient, plus per-segment `concentration_ratio`.
+- **Hypotheses** — five testable + three untestable, each testable one reporting raw and Holm-adjusted p-values.
+- **Export** — CSV, formatted Excel, charts (`images/`), and a Streamlit dashboard.
+
+## Result
+
+- **Gini = 0.324** — top 20% of customers hold 38.2% of revenue.
+- **126 Champions** — 6.4% of clients → 12.1% of revenue (ratio 1.91).
+- **643 Hibernating** — 32% of the base, under-indexing on revenue (ratio 0.61).
+- **992 of 1,983 ≈ 50%** — At Risk + Hibernating is the main re-engagement pool.
+- **47 tests** — pure pipeline functions + README/CSV binding.
+
 Segment bank clients by transaction behavior using **Recency, Frequency, Monetary** scoring, then map quartile combos to named segments and export CSV + Excel + charts + an interactive dashboard.
 
 ## Background
