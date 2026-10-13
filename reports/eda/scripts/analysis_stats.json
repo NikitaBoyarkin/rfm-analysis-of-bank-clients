@@ -1,0 +1,187 @@
+{
+  "raw_rows": 10000,
+  "raw_unique_customers": 1985,
+  "anomaly_rows": 508,
+  "clean_rows": 9492,
+  "clean_unique_customers": 1983,
+  "full_row_dupes": 0,
+  "key_dupes": 0,
+  "nulls_total": 0,
+  "date_min": "2023-01-01 10:54:00",
+  "date_max": "2024-03-30 20:27:00",
+  "customers_only_anomaly": 2,
+  "customers_only_anomaly_ids": [
+    "user_1881",
+    "user_417"
+  ],
+  "amount_min": 500.27,
+  "amount_max": 99874.43,
+  "amount_nonpositive": 0,
+  "future_dates": 0,
+  "product_categories": [
+    "Вклад",
+    "Дебетовая карта",
+    "Инвестиции",
+    "Ипотека",
+    "Кредит",
+    "Страхование"
+  ],
+  "payment_methods": [
+    "Apple Pay",
+    "Google Pay",
+    "банковский перевод",
+    "карта",
+    "криптовалюта"
+  ],
+  "iqr_bounds": [
+    -3618.98,
+    9374.55
+  ],
+  "iqr_outlier_share": 0.0779,
+  "z_outlier_share": 0.033,
+  "label_share": 0.0508,
+  "iqr_vs_label": {
+    "tp": 508,
+    "fp": 271,
+    "fn": 0,
+    "precision": 0.652,
+    "recall": 1.0
+  },
+  "z_vs_label": {
+    "tp": 330,
+    "fp": 0,
+    "fn": 178,
+    "precision": 1.0,
+    "recall": 0.65
+  },
+  "anom_amount_mean": 59503.49,
+  "clean_amount_mean": 3020.78,
+  "anom_amount_min": 15209.23,
+  "clean_amount_max": 26731.37,
+  "corr_amount_anomaly": 0.9022,
+  "amount_skew": 4.754,
+  "amount_mean": 5890.11,
+  "amount_median": 2351.99,
+  "amount_p95": 18351.6,
+  "clean_amount_median": 2217.84,
+  "product_median_gap": 1.112,
+  "payment_median_gap": 1.081,
+  "segment_monetary_gap": 3.142,
+  "segment_table": [
+    {
+      "Segment": "Champions",
+      "customers": 126,
+      "avg_recency": 11.35,
+      "avg_frequency": 8.16,
+      "avg_monetary": 27608.83,
+      "revenue": 3478713.16,
+      "avg_rfm": 12.0,
+      "share_customers_%": 6.35,
+      "share_revenue_%": 12.13,
+      "concentration_ratio": 1.91
+    },
+    {
+      "Segment": "Loyal",
+      "customers": 376,
+      "avg_recency": 32.13,
+      "avg_frequency": 6.4,
+      "avg_monetary": 20692.31,
+      "revenue": 7780308.18,
+      "avg_rfm": 10.32,
+      "share_customers_%": 18.96,
+      "share_revenue_%": 27.13,
+      "concentration_ratio": 1.43
+    },
+    {
+      "Segment": "At Risk",
+      "customers": 349,
+      "avg_recency": 123.85,
+      "avg_frequency": 6.3,
+      "avg_monetary": 19381.56,
+      "revenue": 6764163.52,
+      "avg_rfm": 8.37,
+      "share_customers_%": 17.6,
+      "share_revenue_%": 23.59,
+      "concentration_ratio": 1.34
+    },
+    {
+      "Segment": "Potential Loyalists",
+      "customers": 79,
+      "avg_recency": 32.62,
+      "avg_frequency": 3.97,
+      "avg_monetary": 16777.17,
+      "revenue": 1325396.54,
+      "avg_rfm": 8.57,
+      "share_customers_%": 3.98,
+      "share_revenue_%": 4.62,
+      "concentration_ratio": 1.16
+    },
+    {
+      "Segment": "Need Attention",
+      "customers": 410,
+      "avg_recency": 30.39,
+      "avg_frequency": 4.07,
+      "avg_monetary": 8962.92,
+      "revenue": 3674798.32,
+      "avg_rfm": 7.2,
+      "share_customers_%": 20.68,
+      "share_revenue_%": 12.82,
+      "concentration_ratio": 0.62
+    },
+    {
+      "Segment": "Hibernating",
+      "customers": 643,
+      "avg_recency": 177.47,
+      "avg_frequency": 2.92,
+      "avg_monetary": 8786.79,
+      "revenue": 5649903.84,
+      "avg_rfm": 4.56,
+      "share_customers_%": 32.43,
+      "share_revenue_%": 19.7,
+      "concentration_ratio": 0.61
+    }
+  ],
+  "gini": 0.3243,
+  "top20_revenue_share": 0.3819,
+  "mean_rfm_score": 7.5008,
+  "rfm_customers": 1983,
+  "readme": {
+    "clients_1983": {
+      "claim": 1983,
+      "recomputed": 1983
+    },
+    "transactions_9492": {
+      "claim": 9492,
+      "recomputed": 9492
+    },
+    "gini_0.324": {
+      "claim": 0.324,
+      "recomputed": 0.324
+    },
+    "top20_38.2": {
+      "claim": 38.2,
+      "recomputed": 38.2
+    },
+    "mean_rfm_7.50": {
+      "claim": 7.5,
+      "recomputed": 7.5
+    }
+  },
+  "first_week_partial": true,
+  "trend_flags": [
+    {
+      "week": "2023-01-08",
+      "d_value_%": 1527.4,
+      "d_count_%": 1057.1,
+      "d_per_unit_%": 40.6,
+      "driver": "flow"
+    },
+    {
+      "week": "2023-09-17",
+      "d_value_%": 37.8,
+      "d_count_%": 9.4,
+      "d_per_unit_%": 25.9,
+      "driver": "behaviour"
+    }
+  ]
+}

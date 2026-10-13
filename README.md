@@ -1,6 +1,6 @@
 # RFM analysis of bank clients
 
-> RFM segmentation of 1,983 bank clients on 9,492 transactions: Gini 0.324, top 20% hold 38.2% of revenue, mean RFM score 7.50.
+> RFM segmentation of 1,983 bank clients on 9,492 transactions (after dropping flagged anomalies): Gini 0.324, top 20% hold 38.2% of revenue, mean RFM score 7.50.
 
 ## Navigation
 - 🌐 [Portfolio site](https://nikitaboyarkin.github.io)
