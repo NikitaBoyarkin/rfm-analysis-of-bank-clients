@@ -7,6 +7,8 @@
 - 🏦 [Flagship case: Volta neobank](https://github.com/NikitaBoyarkin/volta-banking)
 - 🧪 Related: [sql-analytics-case-study](https://github.com/NikitaBoyarkin/sql-analytics-case-study) · [churn-prediction](https://github.com/NikitaBoyarkin/churn-prediction) · [tableau_cohort_analysis](https://github.com/NikitaBoyarkin/tableau_cohort_analysis)
 
+**▶ [Diagram: RFM segmentation of 1,983 bank clients](docs/diagrams/rfm-analysis.html)** — opens in a browser, no install, no build
+
 **On this page:** [Situation](#situation) · [Task](#task) · [Actions](#actions) · [Result](#result) · [Background](#background) · [Method](#method) · [Results](#results) · [Chart gallery](#chart-gallery) · [Hypotheses](#hypotheses) · [Recommendations](#recommendations) · [Project layout](#project-layout)
 
 ## Situation
