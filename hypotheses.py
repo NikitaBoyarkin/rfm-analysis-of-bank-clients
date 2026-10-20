@@ -28,6 +28,10 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+# Cramér's V below this is treated as practically negligible even when p < 0.05:
+# with n in the thousands, a V of ~0.07 is a real association and a useless one.
+PRACTICAL_V = 0.10
+
 REPO_ROOT = Path(__file__).resolve().parent
 DEFAULT_RFM = REPO_ROOT / "data" / "rfm_output.csv"
 DEFAULT_TX = REPO_ROOT / "data" / "bank_rfm_dataset_10k_fixed.csv"
@@ -179,8 +183,11 @@ def h6_segment_vs_product_category(rfm: pd.DataFrame, tx: pd.DataFrame) -> dict:
     """H6: Segment and product-category mix are not independent.
 
     Test: chi-square independence on segment x dominant-product contingency,
-    one row per customer. A significant result means different segments prefer
-    different products, which supports segment-targeted cross-sell.
+    one row per customer. Significance only says the association is detectable;
+    with a large n it can be detectable and still too weak to act on. The result
+    therefore carries Cramér's V and an `actionable` flag (V >= PRACTICAL_V):
+    segment-targeted cross-sell needs a non-negligible association, not just a
+    small p-value.
     """
     merged = _dominant_category(tx).merge(rfm[["customer_id", "Segment"]], on="customer_id")
     crosstab = pd.crosstab(merged["Segment"], merged["product_category"])
@@ -197,6 +204,13 @@ def h6_segment_vs_product_category(rfm: pd.DataFrame, tx: pd.DataFrame) -> dict:
         "cramers_v": cramers_v,
         "p_value": round(p, 4),
         "supported": p < 0.05,
+        "practically_negligible": cramers_v < PRACTICAL_V,
+        "actionable": (p < 0.05) and (cramers_v >= PRACTICAL_V),
+        "interpretation": (
+            "detectable but too weak to act on"
+            if cramers_v < PRACTICAL_V
+            else "association large enough to act on"
+        ),
     }
 
 
