@@ -237,7 +237,7 @@ axs[0].legend(frameon=False, fontsize=9)
 axs[1].hist(tx["amount"], bins=60, color=BLUE, edgecolor="white")
 axs[1].set_yscale("log")
 axs[1].set(xlabel="Amount", ylabel="Transactions (log)", title="Transaction amount — log y")
-fig.suptitle("Amount is heavily right-skewed (skew = %.2f)" % tx["amount"].skew(), fontsize=13)
+fig.suptitle(f"Amount is heavily right-skewed (skew = {tx['amount'].skew():.2f})", fontsize=13)
 save(fig, "01_amount_distribution.png")
 
 # 2. median amount by product_category (sorted bar)
@@ -311,7 +311,7 @@ bp = axs[0].boxplot(
     patch_artist=True,
     medianprops={"color": "black"},
 )
-for patch, c in zip(bp["boxes"], [BLUE, RED]):
+for patch, c in zip(bp["boxes"], [BLUE, RED], strict=True):
     patch.set_facecolor(c)
     patch.set_alpha(0.7)
 axs[0].set_yscale("log")
@@ -377,7 +377,8 @@ bars = ax.barh(
 ax.bar_label(
     bars,
     labels=[
-        f"{v:,.0f}  (x{c:.2f})" for v, c in zip(order["avg_monetary"], order["concentration_ratio"])
+        f"{v:,.0f}  (x{c:.2f})"
+        for v, c in zip(order["avg_monetary"], order["concentration_ratio"], strict=True)
     ],
     padding=4,
     fontsize=9,
