@@ -1,3 +1,4 @@
+_schema_version: "0.10.0"  # written automatically by dct migrate
 title: RFM Overview
 notes: >
   Segment mix of bank clients, average recency/frequency/monetary per segment,
@@ -93,7 +94,9 @@ charts:
     sort: { by: n, order: desc }
     style:
       orientation: vertical
-      number_format: ",.0f"
+      axis_y:
+        labels:
+          format: ",.0f"
 
   monetary_by_segment:
     query: segment_summary
@@ -104,7 +107,9 @@ charts:
     sort: { by: avg_monetary, order: desc }
     style:
       orientation: horizontal
-      number_format: "$,.0f"
+      axis_y:
+        labels:
+          format: "$,.0f"
 
   recency_frequency:
     query: scatter

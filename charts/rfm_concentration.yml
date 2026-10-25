@@ -1,3 +1,4 @@
+_schema_version: "0.10.0"  # written automatically by dct migrate
 title: Monetary concentration
 notes: >
   Who owns the monetary value. Share of customers vs share of total monetary
@@ -60,7 +61,9 @@ charts:
     sort: { by: ratio, order: desc }
     style:
       orientation: horizontal
-      number_format: ",.2f"
+      axis_y:
+        labels:
+          format: ",.2f"
 
   share_combo:
     query: shares
@@ -71,7 +74,9 @@ charts:
     sort: { by: monetary_share, order: desc }
     style:
       stack: none
-      number_format: ".1%"
+      axis_y:
+        labels:
+          format: ".1%"
 
   lorenz:
     query: lorenz
@@ -82,9 +87,11 @@ charts:
     x_label: Cumulative % of customers
     y_label: Cumulative % of monetary value
     style:
-      number_format: ".0%"
       color:
         static: "#4C78A8"
+      axis_y:
+        labels:
+          format: ".0%"
 
 rows:
   - share_ratio

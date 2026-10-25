@@ -1,3 +1,4 @@
+_schema_version: "0.10.0"  # written automatically by dct migrate
 title: Transactions profile
 notes: >
   Raw transaction log view — product mix, payment channel mix, and anomaly
@@ -82,7 +83,9 @@ charts:
     sort: { by: total_amount, order: desc }
     style:
       orientation: horizontal
-      number_format: "$,.0f"
+      axis_y:
+        labels:
+          format: "$,.0f"
 
   anomaly_by_method:
     query: anomaly_by_method
@@ -92,7 +95,9 @@ charts:
     title: Anomaly rate by payment method
     style:
       orientation: vertical
-      number_format: ".2%"
+      axis_y:
+        labels:
+          format: ".2%"
 
 rows:
   - cols:
