@@ -1,0 +1,7 @@
+Segment,customers,avg_recency,avg_frequency,avg_monetary,avg_rfm_score
+Champions,126,11.35,8.16,27608.83,12.0
+Loyal,376,32.13,6.4,20692.31,10.32
+Potential Loyalists,79,32.62,3.97,16777.17,8.57
+At Risk,349,123.85,6.3,19381.56,8.37
+Need Attention,410,30.39,4.07,8962.92,7.2
+Hibernating,643,177.47,2.92,8786.79,4.56
