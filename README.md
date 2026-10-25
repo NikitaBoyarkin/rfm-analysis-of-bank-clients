@@ -1,6 +1,6 @@
 # RFM analysis of bank clients
 
-> RFM segmentation of 1,983 bank clients on 9,492 transactions (after dropping flagged anomalies): Gini 0.324, top 20% hold 38.2% of revenue, mean RFM score 7.50.
+> RFM-сегментация 1 983 клиентов банка по 9 492 транзакциям (после отбрасывания строк с флагом аномалии): коэффициент Джини 0,324, топ-20 % клиентов дают 38,2 % выручки, средний RFM-балл — 7,50.
 
 ## Navigation
 - 🌐 [Portfolio site](https://nikitaboyarkin.github.io)
@@ -13,36 +13,38 @@
 
 ## Situation
 
-A retail bank's transaction log gives no unified view of client value: who is
-worth protecting, who is about to churn, and which segment marketing should
-target. Segment bank clients by transaction behavior using **Recency, Frequency,
-Monetary** scoring, then map quartile combos to named segments and ship the
-result as CSV + Excel + charts + an interactive dashboard.
+Транзакционный лог розничного банка не даёт единой картины ценности клиента:
+кого стоит удерживать, кто вот-вот уйдёт и на какой сегмент направлять маркетинг.
+Задача — сегментировать клиентов банка по транзакционному поведению через скоринг
+**Recency, Frequency, Monetary**, сопоставить комбинации квартилей именованным
+сегментам и отдать результат в CSV + Excel + графиках + интерактивном дашборде.
 
 ## Task
 
-Turn one synthetic transaction log into a targetable segment per customer, and
-prove the segmentation has business sense rather than assuming it.
+Превратить один синтетический транзакционный лог в адресуемый сегмент для каждого
+клиента и доказать, что сегментация имеет бизнес-смысл, а не принять это на веру.
 
 ## Actions
 
-- **Load & clean** — parse dates, drop rows flagged `is_anomaly == 1`.
-- **RFM table** — per `customer_id`: `recency`, `frequency`, `monetary_value`.
-- **Score quartiles 1..4** and derive a 3-digit `RFMClass` + `RFMScore` (3..12).
-- **Segment** combo-based (not sum-based), so `444` and `233` no longer share a bucket.
-- **Concentration** — Lorenz curve + Gini coefficient, plus per-segment `concentration_ratio`.
-- **Hypotheses** — five testable + three untestable, each testable one reporting raw and Holm-adjusted p-values.
-- **Export** — CSV, formatted Excel, charts (`images/`), and a Streamlit dashboard.
+- **Загрузка и очистка** — разобрать даты, отбросить строки с `is_anomaly == 1`.
+- **Таблица RFM** — по каждому `customer_id`: `recency`, `frequency`, `monetary_value`.
+- **Скоринг по квартилям 1..4** → трёхзначный `RFMClass` и `RFMScore` (3..12).
+- **Сегментация по комбинации**, а не по сумме, — поэтому `444` и `233` больше не делят один бакет.
+- **Концентрация** — кривая Лоренца и коэффициент Джини, плюс `concentration_ratio` по каждому сегменту.
+- **Гипотезы** — пять проверяемых и три непроверяемых; каждая проверяемая отдаёт сырое и Holm-скорректированное p-значение.
+- **Экспорт** — CSV, форматированный Excel, графики (`images/`) и дашборд на Streamlit.
 
 ## Result
 
-- **Gini = 0.324** — top 20% of customers hold 38.2% of revenue.
-- **126 Champions** — 6.4% of clients → 12.1% of revenue (ratio 1.91).
-- **643 Hibernating** — 32% of the base, under-indexing on revenue (ratio 0.61).
-- **992 of 1,983 ≈ 50%** — At Risk + Hibernating is the main re-engagement pool.
-- **47 tests** — pure pipeline functions + README/CSV binding.
+- **Джини = 0,324** — топ-20 % клиентов держат 38,2 % выручки.
+- **126 Champions** — 6,4 % клиентов → 12,1 % выручки (ratio 1,91).
+- **643 Hibernating** — 32 % базы, недобирают по выручке (ratio 0,61).
+- **992 из 1 983 ≈ 50 %** — At Risk + Hibernating, главный пул для реанимации.
+- **47 тестов** — чистые функции пайплайна плюс сверка README с CSV.
 
-Segment bank clients by transaction behavior using **Recency, Frequency, Monetary** scoring, then map quartile combos to named segments and export CSV + Excel + charts + an interactive dashboard.
+Сегментировать клиентов банка по транзакционному поведению через скоринг
+**Recency, Frequency, Monetary**, сопоставить комбинации квартилей именованным
+сегментам и экспортировать CSV + Excel + графики + интерактивный дашборд.
 
 ## Background
 
@@ -244,11 +246,11 @@ Run `python hypotheses.py` to reproduce.
 
 ## Recommendations
 
-- **Champions (126, 6.4%):** retention rewards + referral asks; they over-index on revenue (ratio 1.91) and hold the highest AOV of the top segments.
-- **At Risk (349, 17.6%):** recent drop-off but historically frequent + high spend (ratio 1.34 on revenue) — re-engagement campaign before they slide into Hibernating (see `docs/experiment_winback.md`).
-- **Hibernating (643, 32.4%):** the largest pool; cheap win-back emails, but don't over-invest — avg monetary is the lowest of all segments.
-- **Need Attention (410, 20.7%):** recent but low frequency/spend — upsell to lift M, or they churn quietly.
-- **Potential Loyalists (79, 4.0%):** high spend per transaction (highest AOV) but the smallest segment and moderate frequency — upsell premium products to grow F.
+- **Champions (126, 6,4 %):** программы удержания и просьбы о рекомендациях — сегмент переиндексирован по выручке (ratio 1,91) и держит самый высокий AOV среди верхних сегментов.
+- **At Risk (349, 17,6 %):** активность недавно просела, но исторически это частые и дорогие покупки (ratio 1,34 по выручке) — кампания реанимации, пока они не сползли в Hibernating (см. `docs/experiment_winback.md`).
+- **Hibernating (643, 32,4 %):** самый большой пул — дешёвые письма для возврата, но без больших вложений: средний monetary у них самый низкий.
+- **Need Attention (410, 20,7 %):** активность свежая, а частота и чек низкие — апселл на рост M, иначе уйдут тихо.
+- **Potential Loyalists (79, 4,0 %):** самая высокая ценность транзакции (высший AOV), но самый маленький сегмент и средняя частота — апселл премиальных продуктов на рост F.
 
 ## Docs & artifacts
 
