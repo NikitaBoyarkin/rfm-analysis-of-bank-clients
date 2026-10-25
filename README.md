@@ -40,7 +40,7 @@
 - **126 Champions** — 6,4 % клиентов → 12,1 % выручки (ratio 1,91).
 - **643 Hibernating** — 32 % базы, недобирают по выручке (ratio 0,61).
 - **992 из 1 983 ≈ 50 %** — At Risk + Hibernating, главный пул для реанимации.
-- **47 тестов** — чистые функции пайплайна плюс сверка README с CSV.
+- **54 теста** — чистые функции пайплайна, сверка README с CSV и smoke-тест дашборда.
 
 Сегментировать клиентов банка по транзакционному поведению через скоринг
 **Recency, Frequency, Monetary**, сопоставить комбинации квартилей именованным
@@ -62,7 +62,7 @@ uv sync --all-extras          # or: pip install -e ".[dev,dashboard]"
 python generate_data.py       # builds data/bank_rfm_dataset_10k_fixed.csv
 python rfm_analysis.py        # writes data/rfm_output.csv, data/rfm_output_report.xlsx, images/*.png
 python hypotheses.py          # runs the testable hypotheses over the RFM output
-pytest                        # 47 tests — pure pipeline functions + README/CSV binding
+pytest                        # 54 tests — pipeline functions, README/CSV binding, dashboard smoke
 streamlit run dashboard/app.py   # interactive dashboard (5 tabs)
 ```
 
@@ -285,7 +285,7 @@ dashboard/            Streamlit interactive dashboard
 charts/               dbt-charts declarative YAML boards
 presentation/         Marp slide deck
 docs/                 data dictionary, SQL templates, A/B design, PRD, metrics
-tests/                pytest suite (47)
+tests/                pytest suite (54)
 data/                 dataset + outputs (gitignored where regenerable)
 images/               charts
 renders/              dbt-charts HTML/PNG renders (gitignored where regenerable)

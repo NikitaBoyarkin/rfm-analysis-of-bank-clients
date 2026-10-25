@@ -6,9 +6,9 @@ Marp slide deck summarizing the RFM project.
 
 ```bash
 # Install marp-cli once
-npx marp@latest presentation/slides.md -o presentation/slides.pdf
+npx @marp-team/marp-cli@latest presentation/slides.md -o presentation/slides.pdf
 # or HTML
-npx marp@latest presentation/slides.md -o presentation/slides.html
+npx @marp-team/marp-cli@latest presentation/slides.md -o presentation/slides.html
 ```
 
 Or open in any Marp-aware editor (VS Code Marp extension) for live preview.
