@@ -258,6 +258,8 @@ Run `python hypotheses.py` to reproduce.
 | `docs/sql_templates.md` | SQL equivalents of the pipeline (PostgreSQL/ClickHouse) |
 | `docs/metrics_framework.md` | Input→Output→Outcome, leading/lagging per segment |
 | `docs/experiment_winback.md` | A/B design for a win-back campaign (FINER, sample size) |
+| `docs/exp001_analysis_plan.md` | Pre-registered analysis plan for EXP-001 (MDE +5 pp, decision rule) |
+| `scripts/ab_test_analyzer.py` | SRM, significance, power and guardrail checks — `--design`, `--baseline`, `--sensitivity`, `--results` |
 | `docs/prd_segment_targeting.md` | PRD — expose `rfm_segment` to marketing |
 | `dashboard/app.py` | Streamlit dashboard (Overview / Segments / RFM map / Concentration / Raw) |
 | `charts/*.yml` | dbt-charts declarative boards (validate + render + serve), each with its own filter variables |

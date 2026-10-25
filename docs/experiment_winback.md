@@ -113,8 +113,8 @@ _To be filled after run._
 
 ## Next steps
 
-- [ ] Pre-register the analysis plan (MDE, metrics, decision rule)
-- [ ] Build the exposure + reactivation tracking query (see `docs/sql_templates.md` §6)
+- [x] Pre-register the analysis plan — `docs/exp001_analysis_plan.md` (MDE +5 pp, metrics, decision rule)
+- [ ] Build the exposure + reactivation tracking query (see `docs/sql_templates.md` §9)
 - [ ] Launch pilot on Hibernating only (largest, cheapest to learn) if power is binding
 
 ## Links

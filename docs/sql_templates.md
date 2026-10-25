@@ -162,6 +162,101 @@ SELECT
 FROM ranked;
 ```
 
+## 9. Campaign exposure + reactivation readout (EXP-001)
+
+The readout for `docs/experiment_winback.md`. Assumes two tables the campaign
+platform must produce — they are **not** derivable from `transactions`:
+
+```text
+campaign_exposure(campaign_id, customer_id, variant, sent_at, delivered, channel)
+campaign_optout  (campaign_id, customer_id, opted_out_at)   -- NULL = still subscribed
+```
+
+### 9.1 Assignment audit (SRM input)
+
+```sql
+SELECT variant,
+       COUNT(*)                                            AS n,
+       ROUND(COUNT(*)::numeric / SUM(COUNT(*)) OVER (), 4) AS observed_share
+FROM campaign_exposure
+WHERE campaign_id = 'EXP-001' AND delivered
+GROUP BY 1
+ORDER BY 1;
+```
+
+Feed `n` per arm to `scripts/ab_test_analyzer.py` — it runs the chi-squared test
+against the **planned** 50/50 split, not an assumed one.
+
+### 9.2 Per-customer readout (the analyzer's input)
+
+```sql
+WITH send AS (
+  SELECT MIN(sent_at) AS send_ts
+  FROM campaign_exposure
+  WHERE campaign_id = 'EXP-001' AND delivered
+),
+arm AS (
+  SELECT e.customer_id, e.variant, s.send_ts
+  FROM campaign_exposure e CROSS JOIN send s
+  WHERE e.campaign_id = 'EXP-001' AND e.delivered
+),
+react AS (
+  SELECT a.customer_id,
+         a.variant,
+         COUNT(t.customer_id)       AS txns_30d,
+         COALESCE(SUM(t.amount), 0) AS revenue_30d
+  FROM arm a
+  LEFT JOIN transactions t
+    ON  t.customer_id      = a.customer_id
+    AND t.is_anomaly       = 0
+    AND t.transaction_date >  a.send_ts
+    AND t.transaction_date <= a.send_ts + INTERVAL '30 days'
+  GROUP BY 1, 2
+),
+opt AS (
+  SELECT customer_id,
+         MAX(CASE WHEN opted_out_at IS NOT NULL THEN 1 ELSE 0 END) AS unsubscribed
+  FROM campaign_optout
+  WHERE campaign_id = 'EXP-001'
+  GROUP BY 1
+)
+SELECT r.customer_id,
+       r.variant,
+       CASE WHEN r.txns_30d > 0 THEN 1 ELSE 0 END          AS converted,
+       r.revenue_30d,
+       COALESCE(o.unsubscribed, 0)                         AS unsubscribed,
+       CASE WHEN r.variant = 'test' THEN 455.00 ELSE 0 END AS offer_cost
+FROM react r
+LEFT JOIN opt o USING (customer_id)
+ORDER BY 1;
+```
+
+`offer_cost` here is the *modelled* cashback (5% × 3 txns × 3 030 ₽ mean ticket
+≈ 455 ₽). Replace it with actual cashback paid before trusting the cost guardrail.
+
+Export the result as CSV and run:
+
+```bash
+python scripts/ab_test_analyzer.py --results data/exp001_results.csv
+```
+
+### 9.3 Guardrail roll-up
+
+```sql
+WITH readout AS ( /* query 9.2 */ )
+SELECT variant,
+       COUNT(*)                                               AS assigned,
+       SUM(converted)                                         AS reactivated,
+       ROUND(AVG(converted::numeric) * 100, 2)                AS reactivation_pct,
+       SUM(unsubscribed)                                      AS optouts,
+       ROUND(AVG(unsubscribed::numeric) * 100, 3)             AS unsubscribe_pct,
+       SUM(offer_cost) / NULLIF(SUM(converted), 0)            AS cost_per_reactivated,
+       ROUND(AVG(revenue_30d) FILTER (WHERE converted = 1), 2) AS revenue_per_reactivated
+FROM readout
+GROUP BY 1
+ORDER BY 1;
+```
+
 ---
 
 All templates are reproducible: run `python rfm_analysis.py` to verify the pandas output matches the SQL result row-for-row against the same CSV.
