@@ -34,6 +34,23 @@ Every number above assumes p₁ = 0.06, which appears in the design doc as an un
 
 **Pre-launch requirement:** replace 0.06 with the measured 30-day reactivation rate of At Risk + Hibernating from campaign history, and re-run `--design --sensitivity`. If the real p₁ ≥ 0.10, this plan is underpowered as written — choose then (before launch, not after) between widening the population to include Need Attention and accepting a directional-only readout. Do not silently proceed.
 
+### 2.1 Update (2026-10-25): the measured p₁ is not usable — status BLOCKED
+
+`scripts/ab_test_analyzer.py --baseline` (cutoff 2023-12-31, 30-day window) measured **p₁ = 0.254, 95% CI 0.228–0.282, n = 983** (At Risk 0.240, Hibernating 0.263).
+
+This number cannot replace 0.06. It reproduces the data generator, not customer behaviour:
+
+| Check | Result |
+|---|---|
+| Uniform-date model prediction `1 − (1 − 30/455)^k` | 0.271 — inside the observed CI |
+| Per-customer transaction counts | mean 4.746, variance 4.566, ratio 0.96 against Poisson, overdispersion p = 0.886 |
+| Monthly volume | 589–673, flat — no seasonality |
+| Weekday share | 13.6–14.7% — no weekend trough |
+
+`generate_data.py:65` draws `customer_id` independently per row, so there is no customer identity and no churn process in the data. A customer with five transactions reacts within 30 days because 5 × 30/455 ≈ 33% of their transactions fall in any 30-day window — not because anyone comes back.
+
+**Status: §2 pre-launch check BLOCKED** — the dataset cannot supply a real control rate. p₁ remains 0.06 as an explicitly unsourced assumption, and the 0.254 is rejected as a generator artifact rather than adopted. Any readout must state that power is conditional on an unverified baseline. Unblocking requires real campaign history (exposure + conversion), which the project does not have.
+
 ## 3. Primary metric
 
 | Field | Value |
@@ -106,4 +123,4 @@ Append-only. Every change to this plan during the run is recorded here with date
 
 | Date | Deviation | Reason |
 |---|---|---|
-| — | — | — |
+| 2026-10-25 | §2 pre-launch check marked BLOCKED; measured p₁ = 0.254 rejected as a generator artifact (§2.1) | Synthetic data has Poisson transaction counts and uniform dates — there is no churn process to measure, so 0.06 stays an explicit assumption |

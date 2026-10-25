@@ -195,10 +195,15 @@ def sensitivity(p1_grid: list[float] | None = None, mde: float = 0.03) -> dict:
     return rows
 
 
-def baseline_reactivation(cutoff: str = "2023-12-31", window_days: int = 30) -> dict:
+def baseline_reactivation(
+    cutoff: str = "2023-12-31",
+    window_days: int = 30,
+    data_path: Path | None = None,
+) -> dict:
     """Replay EXP-001 eligibility at an earlier cutoff and measure the 30-day
     reactivation rate that a control arm would plausibly have shown."""
-    tx = drop_anomalies(load_transactions(ROOT / "data" / "bank_rfm_dataset_10k_fixed.csv"))
+    source = data_path or (ROOT / "data" / "bank_rfm_dataset_10k_fixed.csv")
+    tx = drop_anomalies(load_transactions(source))
     cutoff_ts = pd.Timestamp(cutoff)
 
     past = tx[tx["transaction_date"] <= cutoff_ts]
@@ -317,6 +322,7 @@ def main() -> None:
                         help="required sample / power across candidate control rates")
     parser.add_argument("--cutoff", default="2023-12-31", help="baseline replay cutoff date")
     parser.add_argument("--window-days", type=int, default=30, help="reactivation window")
+    parser.add_argument("--data", type=Path, help="transaction CSV for --baseline (default: data/bank_rfm_dataset_10k_fixed.csv)")
     parser.add_argument("--results", type=Path, help="CSV with experimental readout")
     args = parser.parse_args()
 
@@ -330,7 +336,7 @@ def main() -> None:
     if args.sensitivity:
         out["sensitivity"] = sensitivity()
     if args.baseline:
-        out["baseline"] = baseline_reactivation(args.cutoff, args.window_days)
+        out["baseline"] = baseline_reactivation(args.cutoff, args.window_days, args.data)
     if args.results:
         out["results"] = analyze_results(args.results)
     print(json.dumps(out, indent=2, ensure_ascii=False, default=float))
