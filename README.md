@@ -13,7 +13,9 @@
 
 # RFM analysis of bank clients
 
-> RFM-сегментация 1 983 клиентов банка по 9 492 транзакциям (после отбрасывания строк с флагом аномалии): коэффициент Джини 0,324, топ-20 % клиентов дают 38,2 % выручки, средний RFM-балл — 7,50.
+> RFM-сегментация 1 983 клиентов банка на синтетических данных по 9 492 транзакциям (после отбрасывания строк с флагом аномалии): коэффициент Джини 0,324, топ-20 % клиентов дают 38,2 % выручки, средний RFM-балл — 7,50.
+
+**Public link:** [демо](https://nikitaboyarkin.github.io/demos/rfm/index.html) · [кейс](https://nikitaboyarkin.github.io/projects/rfm/) · [исходники](https://github.com/NikitaBoyarkin/rfm-analysis-of-bank-clients)
 
 ## Navigation
 - 🌐 [Portfolio site](https://nikitaboyarkin.github.io)
@@ -71,12 +73,13 @@ Synthetic transaction log for 2,000 clients of a retail bank. The goal is to ide
 
 ```bash
 uv sync --all-extras          # or: pip install -e ".[dev,dashboard]"
+                              # pip path: drop `uv run` below — plain python/pytest
 
-python generate_data.py       # builds data/bank_rfm_dataset_10k_fixed.csv
-python rfm_analysis.py        # writes data/rfm_output.csv, data/rfm_output_report.xlsx, images/*.png
-python hypotheses.py          # runs the testable hypotheses over the RFM output
-pytest                        # 54 tests — pipeline functions, README/CSV binding, dashboard smoke
-streamlit run dashboard/app.py   # interactive dashboard (5 tabs)
+uv run python generate_data.py        # builds data/bank_rfm_dataset_10k_fixed.csv
+uv run python rfm_analysis.py         # writes data/rfm_output.csv, data/rfm_output_report.xlsx, images/*.png
+uv run python hypotheses.py           # runs the testable hypotheses over the RFM output
+uv run pytest                         # 54 tests — pipeline functions, README/CSV binding, dashboard smoke
+uv run streamlit run dashboard/app.py # interactive dashboard (5 tabs)
 ```
 
 ## Method
@@ -224,9 +227,10 @@ Every chart below follows the same reading order: **what it shows** (description
 Declarative dashboards over the same CSV outputs, built with [`dbt-charts`](https://dbtcharts.com) (`dct`). No HTML/JS hand-written — each board is YAML in `charts/`, and every query runs against the registered CSV sources in `dbt_charts.yml`.
 
 ```bash
-dct validate charts/ --strict          # structural gate (no warehouse needed)
-dct serve                              # live preview of every board
-mkdir -p renders && dct render charts/rfm_overview.yml --format html --output renders/rfm_overview.html
+# `dct` ships with dbt-charts; uvx runs it without a global install (same pin as CI)
+uvx --from dbt-charts==0.10.0 dct validate charts/ --strict   # structural gate (no warehouse needed)
+uvx --from dbt-charts==0.10.0 dct serve                       # live preview of every board
+mkdir -p renders && uvx --from dbt-charts==0.10.0 dct render charts/rfm_overview.yml --format html --output renders/rfm_overview.html
 ```
 
 | Board | What it shows |
@@ -255,7 +259,7 @@ Five original + three added hypotheses; **five testable on this schema, three un
 
 **Reading the three surprises.** H5 is statistically significant but in the *wrong direction*: mobile-majority customers have a **lower** median monetary (11,840 vs 13,445), and the groups also differ in transaction count (median frequency 4 vs 5) — a confound, so the raw comparison does not isolate channel. H7's apparent effect disappears entirely (69 vs 66 days, p = 0.43). H8 was **reframed** away from "anomaly rate by segment": segments are built on the anomaly-dropped frame, so dropping a transaction lowers its customer's frequency and can move them into a lower segment — a mechanical link that made the old segment comparison (Hibernating 7.5% vs Champions 2.4%) significant for reasons unrelated to amounts. Per-channel anomaly rates are flat and independent: карта 5.50%, банковский перевод 5.02%, криптовалюта 4.87%, Apple Pay 4.66%, Google Pay 4.41%. H6 is the quiet one: after the customer-level fix the test is significant (Holm p = 0.006), but Cramér's V = 0.073 is negligible — segments and product-category mix are detectably associated and useless for targeting. `hypotheses.py` therefore reports `actionable: false`, and the association should not be read as support for segment-targeted cross-sell.
 
-Run `python hypotheses.py` to reproduce.
+Run `uv run python hypotheses.py` to reproduce.
 
 ## Recommendations
 
