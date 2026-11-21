@@ -1,0 +1,12 @@
+flowchart TD
+  start(["RFMClass<br/>3 digits, e.g. 443"]) --> q1{"R≥4 and F≥4<br/>and M≥4?"}
+  q1 -->|yes| champions["Champions"]
+  q1 -->|no| q2{"R≥3 and F≥3<br/>and M≥3?"}
+  q2 -->|yes| loyal["Loyal"]
+  q2 -->|no| q3{"R≥3 and F≥2<br/>and M≥3?"}
+  q3 -->|yes| potential["Potential Loyalists"]
+  q3 -->|no| q4{"R≤2 and F≥3?"}
+  q4 -->|yes| risk["At Risk"]
+  q4 -->|no| q5{"R≤2 and F≤2?"}
+  q5 -->|yes| hibernating["Hibernating"]
+  q5 -->|no| attention["Need Attention"]

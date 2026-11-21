@@ -1,23 +1,15 @@
-<!-- ascii-art: pyfiglet + ascii-bin (CC0) -->
-```text
-    _                           _
-.__|_._ ____.._  _.|   _o _____|___|_  _.._ |___|o _ .__|_ _
-|  | | | |(_|| |(_||\/_>|_> (_)|   |_)(_|| ||<(_||(/_| ||__>
-                    /
-
-╭──────────────────────────────────────────────────────────────────────────╮
-│ Транзакционный лог розничного банка не даёт единой картины ценности к... │
-╰──────────────────────────────────────────────────────────────────────────╯
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
 # RFM analysis of bank clients
 
-> RFM-сегментация 1 983 клиентов банка на синтетических данных по 9 492 транзакциям (после отбрасывания строк с флагом аномалии): коэффициент Джини 0,324, топ-20 % клиентов дают 38,2 % выручки, средний RFM-балл — 7,50.
+> RFM-сегментация 1 983 клиентов банка на синтетических данных по 9 492 транзакциям (после отбрасывания строк с флагом аномалии):
+>
+> - 1 983 клиентов;
+> - коэффициент Джини 0,324, топ-20 % клиентов дают 38,2 % выручки,
+> - средний RFM-балл — 7,50.
 
 **Public link:** [демо](https://nikitaboyarkin.github.io/demos/rfm/index.html) · [кейс](https://nikitaboyarkin.github.io/projects/rfm/) · [исходники](https://github.com/NikitaBoyarkin/rfm-analysis-of-bank-clients)
 
 ## Navigation
+
 - 🌐 [Portfolio site](https://nikitaboyarkin.github.io)
 - 🏦 [Flagship case: Volta neobank](https://github.com/NikitaBoyarkin/volta-banking)
 - 🧪 Related: [sql-analytics-case-study](https://github.com/NikitaBoyarkin/sql-analytics-case-study) · [churn-prediction](https://github.com/NikitaBoyarkin/churn-prediction) · [tableau_cohort_analysis](https://github.com/NikitaBoyarkin/tableau_cohort_analysis)
@@ -84,6 +76,8 @@ uv run streamlit run dashboard/app.py # interactive dashboard (5 tabs)
 
 ## Method
 
+![RFM pipeline: raw log → clean → RFM table → quartile scoring → 6 segments → concentration check and hypotheses → exports](docs/diagrams/rfm-pipeline.svg)
+
 1. **Load & clean** — parse dates, drop rows flagged `is_anomaly == 1`.
 2. **RFM table** — per `customer_id`: `recency` (days since last txn vs snapshot +1d), `frequency` (txn count), `monetary_value` (sum).
 3. **Score quartiles 1..4** (higher = better):
@@ -93,28 +87,32 @@ uv run streamlit run dashboard/app.py # interactive dashboard (5 tabs)
    - `RFMClass`: 3-digit string (`444` = best, `111` = worst); `RFMScore` = sum (3..12)
 4. **Segment** — combo-based (not sum-based), so `444` and `233` no longer share a bucket:
 
-| Condition | Segment |
-|---|---|
-| R≥4 & F≥4 & M≥4 | Champions |
-| R≥3 & F≥3 & M≥3 | Loyal |
+| Condition       | Segment             |
+| --------------- | ------------------- |
+| R≥4 & F≥4 & M≥4 | Champions           |
+| R≥3 & F≥3 & M≥3 | Loyal               |
 | R≥3 & F≥2 & M≥3 | Potential Loyalists |
-| R≤2 & F≥3 | At Risk |
-| R≤2 & F≤2 | Hibernating |
-| else | Need Attention |
+| R≤2 & F≥3       | At Risk             |
+| R≤2 & F≤2       | Hibernating         |
+| else            | Need Attention      |
+
+Rules are evaluated top-down, first match wins — the flow shows that order:
+
+![Segment decision flow: first matching rule wins, Champions checked before Loyal, and Need Attention as the fallback](docs/diagrams/rfm-segments.svg)
 
 5. **Concentration** — Lorenz curve + Gini coefficient verify segmentation has business sense; per-segment `concentration_ratio = revenue_share / customer_share` flags over/under-indexing.
 6. **Export** — CSV (`data/rfm_output.csv`), formatted Excel (`data/rfm_output_report.xlsx`), charts (`images/`), interactive dashboard (`dashboard/`).
 
 ## Results
 
-| Segment | Customers | Avg recency | Avg frequency | Avg monetary | Avg RFM |
-|---|---:|---:|---:|---:|---:|
-| Champions | 126 | 11.35 | 8.16 | 27,608.83 | 12.00 |
-| Loyal | 376 | 32.13 | 6.40 | 20,692.31 | 10.32 |
-| Potential Loyalists | 79 | 32.62 | 3.97 | 16,777.17 | 8.57 |
-| At Risk | 349 | 123.85 | 6.30 | 19,381.56 | 8.37 |
-| Need Attention | 410 | 30.39 | 4.07 | 8,962.92 | 7.20 |
-| Hibernating | 643 | 177.47 | 2.92 | 8,786.79 | 4.56 |
+| Segment             | Customers | Avg recency | Avg frequency | Avg monetary | Avg RFM |
+| ------------------- | --------: | ----------: | ------------: | -----------: | ------: |
+| Champions           |       126 |       11.35 |          8.16 |    27,608.83 |   12.00 |
+| Loyal               |       376 |       32.13 |          6.40 |    20,692.31 |   10.32 |
+| Potential Loyalists |        79 |       32.62 |          3.97 |    16,777.17 |    8.57 |
+| At Risk             |       349 |      123.85 |          6.30 |    19,381.56 |    8.37 |
+| Need Attention      |       410 |       30.39 |          4.07 |     8,962.92 |    7.20 |
+| Hibernating         |       643 |      177.47 |          2.92 |     8,786.79 |    4.56 |
 
 Mean RFM score across the base is **7.50** — exactly the midpoint of the 3–12 range. **Monetary concentration:** Gini = 0.324 — the top 20% of customers hold **38.2%** of revenue. Champions over-index on revenue (ratio 1.91), Hibernating under-indexes (ratio 0.61).
 
@@ -129,6 +127,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![Segment distribution](images/segment_distribution.png)
 
 **Insights.**
+
 - **Hibernating (643, 32%)** is the single largest pool — roughly 3 out of 10 clients sit in the low-engagement bucket.
 - **Champions (126, 6%)** is small but strategically critical; **At Risk (349)** is the larger imminent-churn group.
 - Combined, **At Risk + Hibernating = 992 of 1,983 ≈ 50% of the base** — the main re-engagement opportunity.
@@ -140,6 +139,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![Monetary by segment](images/monetary_by_segment.png)
 
 **Insights.**
+
 - **Champions carry the highest average monetary (≈ 27.6k)**, followed by Loyal (≈ 20.7k) and At Risk (≈ 19.4k) — value concentrates in the segments scoring highest on R/F.
 - **Hibernating (≈ 8.8k) and Need Attention (≈ 9.0k)** sit at the bottom — recent-but-small accounts and dormant ones with limited upside.
 - The log-scale spread confirms skew: within every segment a small minority dominates spend, which is what the Gini of 0.324 summarizes globally.
@@ -151,6 +151,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![Recency vs Frequency](images/rfm_scatter.png)
 
 **Insights.**
+
 - **Champions** cluster in the low-recency / high-frequency corner (top-left): 11.4 days since last txn, 8.2 txns each; **Hibernating** fills the bottom-right (177.5 days, 2.9 txns).
 - **At Risk** sits between the active and dormant clusters — 123.9 days of recency but still 6.3 txns, far more frequent than Hibernating's 2.9 — the clearest win-back target before they slide.
 - Bubble size shows the long tail of high-monetary clients spread across several segments, not only Champions.
@@ -162,6 +163,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![Lorenz curve](images/lorenz_curve.png)
 
 **Insights.**
+
 - **Gini = 0.324** — a meaningfully unequal distribution of monetary value, though far from extreme.
 - **Top-20% of customers generate 38.2% of revenue** — about 1.9× their proportional share (38.2 / 20), so the curve bends, but this book does not follow an 80/20 Pareto shape.
 - Segmentation still has business sense: the top quintile carries nearly twice its weight in value, so targeting the right segment pays off above its customer count.
@@ -173,6 +175,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![RFM score distribution](images/rfm_score_distribution.png)
 
 **Insights.**
+
 - The distribution is roughly bell-shaped around a mean of **7.50** — exactly the midpoint of the 3–12 range, so overall engagement is balanced rather than skewed low.
 - Left tail (scores ≤ 4, **340 clients**) is the dormant mass; right tail (score 12, **126 clients**) is exactly the Champions count.
 - Fewer clients at the extremes than in the middle — most of the book is "average," which is where segmentation adds the most leverage.
@@ -184,6 +187,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![RFM matrix heatmap](images/rfm_matrix_heatmap.png)
 
 **Insights.**
+
 - The **(R=4, F=4)** cell (recent + frequent, **196 clients**) is the Champions core with avg monetary ≈ 23,434 — nearly 1.6× the whole-book average of ≈ 14.5k (total monetary 28.67M ÷ 1,983 customers).
 - The **(R=1, F=1)** corner (**248 clients**) is the deep-sleep mass — the single largest cell.
 - **Avg monetary rises more with frequency than with recency** (reading down columns vs across rows) — frequency is the stronger value signal, so retention campaigns should target frequency, not just freshness.
@@ -195,6 +199,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![Customer vs revenue share](images/revenue_vs_customers_share.png)
 
 **Insights.**
+
 - **Champions: 6.4% of clients → 12.1% of revenue** (ratio 1.91) — the single most valuable segment to protect and reward.
 - **Need Attention: 20.7% of clients → 12.8% of revenue** (ratio 0.62) — a cost-reduction candidate, not an investment target.
 - **Hibernating: 32.4% of clients → 19.7% of revenue** (ratio 0.61) — worth cheap win-back touches, but cap campaign spend per client.
@@ -207,6 +212,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![AOV by segment](images/aov_by_segment.png)
 
 **Insights.**
+
 - **Potential Loyalists have the highest AOV** (median ≈ 4.2k), just ahead of Champions (≈ 3.4k) and Loyal (≈ 3.1k) — value per transaction is highest in the segments that buy premium products.
 - **Need Attention has the lowest AOV** (≈ 2.1k), with Hibernating next (≈ 2.6k) — recent but small tickets, and the dormant pool buys small when it buys at all.
 - For Hibernating/Need Attention, **raising AOV is more realistic than raising frequency first** — a focused upsell beats a broad engagement push.
@@ -218,6 +224,7 @@ Every chart below follows the same reading order: **what it shows** (description
 ![Monthly activity](images/monthly_activity.png)
 
 **Insights.**
+
 - **Hibernating's volume and revenue decay visibly over the window** — its share is front-loaded in early months, which is exactly the pattern the Recency metric captures.
 - **Champions and Loyal stay flat** through the window despite small client counts — stable, reliable revenue.
 - The late-window decline in At Risk activity tracks how quickly they approach Hibernating status; intervention timing should sit in this window.
@@ -233,12 +240,12 @@ uvx --from dbt-charts==0.10.0 dct serve                       # live preview of 
 mkdir -p renders && uvx --from dbt-charts==0.10.0 dct render charts/rfm_overview.yml --format html --output renders/rfm_overview.html
 ```
 
-| Board | What it shows |
-|---|---|
-| `charts/rfm_overview.yml` | KPI row (clients, avg monetary/recency/RFM), clients per segment, avg monetary by segment, recency-vs-frequency scatter |
-| `charts/rfm_matrix.yml` | RFM score distribution, R×F quartile heatmap, top RFM classes |
-| `charts/rfm_concentration.yml` | Concentration ratio per segment, customer vs monetary share, Lorenz curve |
-| `charts/transactions_profile.yml` | Product mix, payment-channel mix, amount by product, anomaly rate by channel |
+| Board                             | What it shows                                                                                                           |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `charts/rfm_overview.yml`         | KPI row (clients, avg monetary/recency/RFM), clients per segment, avg monetary by segment, recency-vs-frequency scatter |
+| `charts/rfm_matrix.yml`           | RFM score distribution, R×F quartile heatmap, top RFM classes                                                           |
+| `charts/rfm_concentration.yml`    | Concentration ratio per segment, customer vs monetary share, Lorenz curve                                               |
+| `charts/transactions_profile.yml` | Product mix, payment-channel mix, amount by product, anomaly rate by channel                                            |
 
 Boards carry interactive filters (segment / payment method) and render to HTML, PNG, SVG, or PDF.
 
@@ -246,44 +253,46 @@ Boards carry interactive filters (segment / payment method) and render to HTML, 
 
 Five original + three added hypotheses; **five testable on this schema, three untestable**. Every testable hypothesis reports both the raw and the Holm-adjusted p-value (Holm–Bonferroni across the five tests).
 
-| # | Hypothesis | Test | Raw p | Holm p | Result |
-|---|---|---|---|---|---|
-| H1 | Higher Monetary ↔ more distinct products | Spearman ρ (customer level) | < 0.001 | 0.000 | **ρ = 0.61 — supported** |
-| H5 | Mobile-bank users have higher Monetary | Mann-Whitney U, two-sided; n = 391 mobile vs 1,592 other | 0.0003 | 0.0012 | **significant but the effect runs the OPPOSITE way — not supported as stated** |
-| H6 | Segment × product-category associated | χ² independence, customer level (dominant category); dof 25 | 0.002 (permutation) | 0.006 | **χ² = 52.32, Cramér's V = 0.073 — статистически детектируемо, практически ничтожно** (association есть, но `actionable: false` при пороге V ≥ 0,10) |
-| H7 | Mobile users have lower Recency | Mann-Whitney U, two-sided | 0.43 | 0.80 | **not supported** |
-| H8 | Large-amount flag independent of payment channel | χ² independence; dof 4 | 0.40 | — | **χ² = 4.04 — independent, as expected (not rejected)** |
-| H2 | Low Recency → higher retention | — | — | — | untestable: no cohort panel / retention label |
-| H3 | Hibernating clients reactivate via email | — | — | — | untestable: no campaign exposure data |
-| H4 | High Frequency → higher NPS | — | — | — | untestable: no NPS / satisfaction field |
+| #   | Hypothesis                                       | Test                                                        | Raw p               | Holm p | Result                                                                                                                                               |
+| --- | ------------------------------------------------ | ----------------------------------------------------------- | ------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H1  | Higher Monetary ↔ more distinct products         | Spearman ρ (customer level)                                 | < 0.001             | 0.000  | **ρ = 0.61 — supported**                                                                                                                             |
+| H5  | Mobile-bank users have higher Monetary           | Mann-Whitney U, two-sided; n = 391 mobile vs 1,592 other    | 0.0003              | 0.0012 | **significant but the effect runs the OPPOSITE way — not supported as stated**                                                                       |
+| H6  | Segment × product-category associated            | χ² independence, customer level (dominant category); dof 25 | 0.002 (permutation) | 0.006  | **χ² = 52.32, Cramér's V = 0.073 — статистически детектируемо, практически ничтожно** (association есть, но `actionable: false` при пороге V ≥ 0,10) |
+| H7  | Mobile users have lower Recency                  | Mann-Whitney U, two-sided                                   | 0.43                | 0.80   | **not supported**                                                                                                                                    |
+| H8  | Large-amount flag independent of payment channel | χ² independence; dof 4                                      | 0.40                | —      | **χ² = 4.04 — independent, as expected (not rejected)**                                                                                              |
+| H2  | Low Recency → higher retention                   | —                                                           | —                   | —      | untestable: no cohort panel / retention label                                                                                                        |
+| H3  | Hibernating clients reactivate via email         | —                                                           | —                   | —      | untestable: no campaign exposure data                                                                                                                |
+| H4  | High Frequency → higher NPS                      | —                                                           | —                   | —      | untestable: no NPS / satisfaction field                                                                                                              |
 
-**Reading the three surprises.** H5 is statistically significant but in the *wrong direction*: mobile-majority customers have a **lower** median monetary (11,840 vs 13,445), and the groups also differ in transaction count (median frequency 4 vs 5) — a confound, so the raw comparison does not isolate channel. H7's apparent effect disappears entirely (69 vs 66 days, p = 0.43). H8 was **reframed** away from "anomaly rate by segment": segments are built on the anomaly-dropped frame, so dropping a transaction lowers its customer's frequency and can move them into a lower segment — a mechanical link that made the old segment comparison (Hibernating 7.5% vs Champions 2.4%) significant for reasons unrelated to amounts. Per-channel anomaly rates are flat and independent: карта 5.50%, банковский перевод 5.02%, криптовалюта 4.87%, Apple Pay 4.66%, Google Pay 4.41%. H6 is the quiet one: after the customer-level fix the test is significant (Holm p = 0.006), but Cramér's V = 0.073 is negligible — segments and product-category mix are detectably associated and useless for targeting. `hypotheses.py` therefore reports `actionable: false`, and the association should not be read as support for segment-targeted cross-sell.
+**Reading the three surprises.** H5 is statistically significant but in the _wrong direction_: mobile-majority customers have a **lower** median monetary (11,840 vs 13,445), and the groups also differ in transaction count (median frequency 4 vs 5) — a confound, so the raw comparison does not isolate channel. H7's apparent effect disappears entirely (69 vs 66 days, p = 0.43). H8 was **reframed** away from "anomaly rate by segment": segments are built on the anomaly-dropped frame, so dropping a transaction lowers its customer's frequency and can move them into a lower segment — a mechanical link that made the old segment comparison (Hibernating 7.5% vs Champions 2.4%) significant for reasons unrelated to amounts. Per-channel anomaly rates are flat and independent: карта 5.50%, банковский перевод 5.02%, криптовалюта 4.87%, Apple Pay 4.66%, Google Pay 4.41%. H6 is the quiet one: after the customer-level fix the test is significant (Holm p = 0.006), but Cramér's V = 0.073 is negligible — segments and product-category mix are detectably associated and useless for targeting. `hypotheses.py` therefore reports `actionable: false`, and the association should not be read as support for segment-targeted cross-sell.
 
 Run `uv run python hypotheses.py` to reproduce.
 
 ## Recommendations
 
-- **Champions (126, 6,4 %):** программы удержания и просьбы о рекомендациях — сегмент переиндексирован по выручке (ratio 1,91) и держит самый высокий AOV среди верхних сегментов.
-- **At Risk (349, 17,6 %):** активность недавно просела, но исторически это частые и дорогие покупки (ratio 1,34 по выручке) — кампания реанимации, пока они не сползли в Hibernating (см. `docs/experiment_winback.md`).
-- **Hibernating (643, 32,4 %):** самый большой пул — дешёвые письма для возврата, но без больших вложений: средний monetary у них самый низкий.
-- **Need Attention (410, 20,7 %):** активность свежая, а частота и чек низкие — апселл на рост M, иначе уйдут тихо.
-- **Potential Loyalists (79, 4,0 %):** самая высокая ценность транзакции (высший AOV), но самый маленький сегмент и средняя частота — апселл премиальных продуктов на рост F.
+| Segment                         | Recommendation                                                                                                                                                                               |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Champions (126, 6,4 %)          | программы удержания и просьбы о рекомендациях — сегмент переиндексирован по выручке (ratio 1,91) и держит самый высокий AOV среди верхних сегментов.                                         |
+| At Risk (349, 17,6 %)           | активность недавно просела, но исторически это частые и дорогие покупки (ratio 1,34 по выручке) — кампания реанимации, пока они не сползли в Hibernating (см. `docs/experiment_winback.md`). |
+| Hibernating (643, 32,4 %)       | самый большой пул — дешёвые письма для возврата, но без больших вложений: средний monetary у них самый низкий.                                                                               |
+| Need Attention (410, 20,7 %)    | активность свежая, а частота и чек низкие — апселл на рост M, иначе уйдут тихо.                                                                                                              |
+| Potential Loyalists (79, 4,0 %) | самая высокая ценность транзакции (высший AOV), но самый маленький сегмент и средняя частота — апселл премиальных продуктов на рост F.                                                       |
 
 ## Docs & artifacts
 
-| File | What |
-|---|---|
-| `docs/data_dictionary.md` | Field catalog for source + RFM tables |
-| `docs/sql_templates.md` | SQL equivalents of the pipeline (PostgreSQL/ClickHouse) |
-| `docs/metrics_framework.md` | Input→Output→Outcome, leading/lagging per segment |
-| `docs/experiment_winback.md` | A/B design for a win-back campaign (FINER, sample size) |
-| `docs/exp001_analysis_plan.md` | Pre-registered analysis plan for EXP-001 (MDE +5 pp, decision rule) |
-| `scripts/ab_test_analyzer.py` | SRM, significance, power and guardrail checks — `--design`, `--baseline`, `--sensitivity`, `--results` |
-| `docs/prd_segment_targeting.md` | PRD — expose `rfm_segment` to marketing |
-| `dashboard/app.py` | Streamlit dashboard (Overview / Segments / RFM map / Concentration / Raw) |
-| `charts/*.yml` | dbt-charts declarative boards (validate + render + serve), each with its own filter variables |
-| `dbt_charts.yml` | dbt-charts project config — CSV source registry |
-| `presentation/slides.md` | Marp deck summarizing the project |
+| File                            | What                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `docs/data_dictionary.md`       | Field catalog for source + RFM tables                                                                  |
+| `docs/sql_templates.md`         | SQL equivalents of the pipeline (PostgreSQL/ClickHouse)                                                |
+| `docs/metrics_framework.md`     | Input→Output→Outcome, leading/lagging per segment                                                      |
+| `docs/experiment_winback.md`    | A/B design for a win-back campaign (FINER, sample size)                                                |
+| `docs/exp001_analysis_plan.md`  | Pre-registered analysis plan for EXP-001 (MDE +5 pp, decision rule)                                    |
+| `scripts/ab_test_analyzer.py`   | SRM, significance, power and guardrail checks — `--design`, `--baseline`, `--sensitivity`, `--results` |
+| `docs/prd_segment_targeting.md` | PRD — expose `rfm_segment` to marketing                                                                |
+| `dashboard/app.py`              | Streamlit dashboard (Overview / Segments / RFM map / Concentration / Raw)                              |
+| `charts/*.yml`                  | dbt-charts declarative boards (validate + render + serve), each with its own filter variables          |
+| `dbt_charts.yml`                | dbt-charts project config — CSV source registry                                                        |
+| `presentation/slides.md`        | Marp deck summarizing the project                                                                      |
 
 ## Caveats
 

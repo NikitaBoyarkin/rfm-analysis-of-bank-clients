@@ -1,0 +1,9 @@
+flowchart TD
+  raw["Raw transaction log<br/>10,000 rows"] --> clean["Clean<br/>drop is_anomaly = 1"]
+  clean --> rfm["RFM table<br/>1,983 clients · 9,492 txns"]
+  rfm --> score["Quartile scores 1–4<br/>R · F · M → 3-digit class"]
+  score --> seg["6 segments<br/>combo-based, not by sum"]
+  seg --> conc["Concentration<br/>Lorenz · Gini 0.324"]
+  seg --> hyp["Hypotheses<br/>5 testable · Holm-adjusted"]
+  conc --> out["Exports<br/>CSV · Excel · charts<br/>Streamlit · dbt-charts"]
+  hyp --> out
